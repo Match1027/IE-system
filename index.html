@@ -756,27 +756,28 @@ async function extractImages(zip, sheetNum){
 // WORKSHEET PAGE
 // ══════════════════════════════════════════
 let WS_STYLES=[], wsSortBy='export';
+
+// ── Firebase 自動讀取：頁面載入時自動恢復上次資料 ──
 async function loadFirebaseData(){
-
-  const { doc, getDoc } = await import(
-    "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"
-  );
-
-  const docRef = doc(window.db, "systemData", "worksheet");
-
-  const docSnap = await getDoc(docRef);
-
-  if(docSnap.exists()){
-
-      WS_STYLES = docSnap.data().data || [];
-
-      console.log("已載入 Firebase 資料");
-
+  try {
+    if(!window.db) return;
+    const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    const docSnap = await getDoc(doc(window.db, "systemData", "worksheet"));
+    if(docSnap.exists() && docSnap.data().data?.length){
+      WS_STYLES = docSnap.data().data;
+      wsOpts.factory=[...new Set(WS_STYLES.map(s=>s.factory))].sort();
+      wsOpts.buyer  =[...new Set(WS_STYLES.map(s=>s.buyer))].sort();
+      wsOpts.fstyle =[...new Set(WS_STYLES.map(s=>s.fstyle))].sort();
+      wsOpts.fabric =[...new Set(WS_STYLES.map(s=>s.fab_type).filter(Boolean))].sort();
+      document.getElementById('fac-badge').textContent=[...new Set(WS_STYLES.map(s=>s.factory))].join(', ');
+      document.getElementById('ws-upload-overlay').style.display='none';
+      document.getElementById('ws-main').style.display='block';
+      document.getElementById('ws-progress').textContent=`☁ 已從雲端載入 ${WS_STYLES.length} 個款式`;
       wsApplyFilters();
-
-  }
+      console.log("✅ 已從 Firebase 載入 Worksheet 資料");
+    }
+  } catch(e){ console.warn("Firebase 讀取失敗:", e); }
 }
-loadFirebaseData();
 const WS_TYPES=['factory','buyer','fstyle','fabric'];
 const wsSel={factory:new Set(),buyer:new Set(),fstyle:new Set(),fabric:new Set()};
 const wsOpts={factory:[],buyer:[],fstyle:[],fabric:[]};
@@ -871,19 +872,17 @@ document.getElementById('ws-file-in').addEventListener('change',async function(e
   document.getElementById('ws-progress').textContent=`✅ ${WS_STYLES.length} 個款式`;
   document.getElementById('ws-upload-overlay').style.display='none';
   document.getElementById('ws-main').style.display='block';
-  wsApplyFilters(); 
-
-const { doc, setDoc } = await import(
-  "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"
-);
-
-await setDoc(doc(window.db, "systemData", "worksheet"), {
-   data: WS_STYLES
-});
-
-console.log("資料已同步到 Firebase");
-
-e.target.value='';
+  wsApplyFilters();
+  // ── Firebase 同步：匯入後自動上傳 ──
+  try {
+    if(window.db){
+      const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      await setDoc(doc(window.db, "systemData", "worksheet"), { data: WS_STYLES });
+      console.log("✅ 資料已同步到 Firebase");
+      document.getElementById('ws-progress').textContent=`✅ ${WS_STYLES.length} 個款式 — ☁ 已雲端同步`;
+    }
+  } catch(fbErr){ console.warn("Firebase 同步失敗:", fbErr); }
+  e.target.value='';
 });
 const wsUC=document.getElementById('ws-upload-card');
 wsUC.addEventListener('dragover',e=>{e.preventDefault();wsUC.classList.add('drag');});
@@ -1623,44 +1622,32 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElement
 // Initial: show only WS import button
 document.getElementById('ws-import-btn').style.display='';
 </script>
+
+<!-- ── Firebase 連接（說明書 §1）── -->
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
-
   apiKey: "AIzaSyDaPHiv1GxAP-xrkhTL8mjrLUuulXsGUz4",
-
   authDomain: "gld-production-system.firebaseapp.com",
-
   projectId: "gld-production-system",
-
   storageBucket: "gld-production-system.firebasestorage.app",
-
   messagingSenderId: "104685897314",
-
   appId: "1:104685897314:web:d266d1bc5971a38d31f33b",
-
   measurementId: "G-N8DCSSYM75"
-
 };
 
 const app = initializeApp(firebaseConfig);
-
-const db = getFirestore(app);
-
+const db  = getFirestore(app);
 window.db = db;
+console.log("✅ Firebase Connected");
 
-console.log("Firebase Connected");
-
+// 頁面載入後自動讀取雲端資料（說明書 §2）
+// 等主 script 的 loadFirebaseData 函式就緒後執行
+window.addEventListener('load', () => {
+  if(typeof loadFirebaseData === 'function') loadFirebaseData();
+});
 </script>
-
 </body>
 </html>
