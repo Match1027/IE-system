@@ -125,6 +125,17 @@ h2{font-size:18px;margin:0}
 .dmsg{min-height:20px;font-size:14px;color:var(--ok);margin-bottom:6px;text-align:center}
 #xText{width:100%;height:200px;font:13px/1.4 ui-monospace,monospace;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px;white-space:pre;overflow:auto}
 .rec .who{color:var(--muted);font-size:13px;font-weight:400}
+.grow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:8px}
+.grow select{width:100%;min-height:52px;font:inherit;font-size:16px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:0 10px}
+.combo{position:relative}
+.sug{position:absolute;left:0;right:0;top:100%;margin-top:2px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);max-height:200px;overflow-y:auto;z-index:5;display:none}
+.sug.on{display:block}
+.sug .opt{display:flex;align-items:center}
+.sug .opt button.pick{flex:1;min-height:44px;text-align:left;padding:0 12px;border:0;background:none;font-size:16px}
+.sug .opt button.pick b{color:var(--primary)}
+.sug .opt button.rm{width:44px;height:44px;border:0;background:none;color:var(--muted);font-size:18px}
+.sug .hint{padding:8px 12px;font-size:13px;color:var(--muted)}
+.modal{max-height:92dvh;overflow-y:auto}
 </style>
 </head>
 <body>
@@ -188,9 +199,11 @@ h2{font-size:18px;margin:0}
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
   <h2 id="mTitle"></h2>
   <div class="msum num" id="msum"></div>
-  <label class="fl"><span id="lGrp"></span><input type="text" id="fGrp" autocomplete="off"></label>
-  <label class="fl"><span id="lProc"></span><input type="text" id="fProc" autocomplete="off"></label>
-  <label class="fl"><span id="lOpr"></span><input type="text" id="name" autocomplete="off"></label>
+  <div class="fl"><span id="lGrp"></span>
+    <div class="grow"><select id="fFac" aria-label="Factory"><option>GLD5</option><option>GLD6</option></select><select id="fLine" aria-label="Line"></select></div>
+  </div>
+  <div class="fl combo"><span id="lProc"></span><input type="text" id="fProc" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="sgProc"><div class="sug" id="sgProc" role="listbox"></div></div>
+  <div class="fl combo"><span id="lOpr"></span><input type="text" id="name" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="sgOpr"><div class="sug" id="sgOpr" role="listbox"></div></div>
   <div class="mrow"><button class="btn" id="mCancel"></button><button class="btn pri" id="mOk"></button></div>
 </div>
 <div class="modal" id="cmodal" role="dialog" aria-modal="true" aria-labelledby="cTitle">
@@ -261,7 +274,7 @@ const L={
   dlL:'Catatan downtime',noDown:'Tidak ada downtime',dTitle:'Downtime — sedang berhenti',dNoteL:'Alasan (bisa ditulis)',dNoteP:'contoh: benang putus',resume:'Lanjut kerja',
   quick:['Benang putus','Ambil barang','Ganti bobbin','Mesin rusak','Tunggu bahan','Ke toilet','Lainnya'],
   needCnt:'Belum ada output untuk disimpan',dur:'Durasi',customM:'menit lain',delDown:'Hapus downtime',
-  sum2:(c,d,sp,g)=>c+' pcs · '+d+' · '+sp+' / '+g+' sec/pcs',m2tag:'Hitung',grp:'Grup / Line',xh:{date:'Tanggal',mode:'Mode',n:'Loop / pcs',avg:'Avg. sec / sec tanpa downtime',gross:'Sec termasuk downtime',hr:'Output/jam',hrg:'Output/jam (termasuk downtime)',tot:'Total sec',dt:'Downtime (sec)',tgt:'Target',mp:'Saran operator',det:'Detail'},proc:'Proses',opr:'Nama operator',xls:'Export Excel',txt:'Salin teks',delAll:'Hapus semua',delAllQ:'Tekan lagi = hapus semua',noData:'Belum ada catatan',xlsDone:'File Excel dibuat',copied:'Tersalin — tempel di Excel',txtT:'Teks untuk Excel',txtNote:'Tekan Salin, lalu tempel (paste) di Excel. Kolom dipisah tab.',close:'Tutup',copy:'Salin',allDel:'Semua catatan dihapus',net2:'Tanpa downtime',gross2:'Termasuk downtime'},
+  sum2:(c,d,sp,g)=>c+' pcs · '+d+' · '+sp+' / '+g+' sec/pcs',m2tag:'Hitung',grp:'Pabrik / Line',newOpt:'Baru — akan disimpan',xh:{date:'Tanggal',mode:'Mode',n:'Loop / pcs',avg:'Avg. sec / sec tanpa downtime',gross:'Sec termasuk downtime',hr:'Output/jam',hrg:'Output/jam (termasuk downtime)',tot:'Total sec',dt:'Downtime (sec)',tgt:'Target',mp:'Saran operator',det:'Detail'},proc:'Proses',opr:'Nama operator',xls:'Export Excel',txt:'Salin teks',delAll:'Hapus semua',delAllQ:'Tekan lagi = hapus semua',noData:'Belum ada catatan',xlsDone:'File Excel dibuat',copied:'Tersalin — tempel di Excel',txtT:'Teks untuk Excel',txtNote:'Tekan Salin, lalu tempel (paste) di Excel. Kolom dipisah tab.',close:'Tutup',copy:'Salin',allDel:'Semua catatan dihapus',net2:'Tanpa downtime',gross2:'Termasuk downtime'},
  zh:{ttl:'分段計時',sw:'Bahasa Indonesia',start:'開始',lap:'記一個 Loop',stop:'停止',clear:'全部清除',confirm:'再按一次確認清除',
   idle:'按開始計時',cont:'按開始繼續計時',run:n=>'第 '+n+' 個 Loop 計時中',
   empty:'還沒有 Loop',sec:'秒',pcs:'件',cnt:n=>n+' 個',avg:'平均秒數',tot:'總秒數',avgS:'平均',totS:'總計',hr:'小時產量',
@@ -276,7 +289,7 @@ const L={
   dlL:'停機紀錄',noDown:'沒有停機',dTitle:'停機中',dNoteL:'原因（可自行填寫）',dNoteP:'例：斷線',resume:'繼續工作',
   quick:['斷線','拿東西','換底線','機台故障','等料','上廁所','其他'],
   needCnt:'還沒有產量可以儲存',dur:'時間',customM:'其他分鐘',delDown:'刪除停機',
-  sum2:(c,d,sp,g)=>c+' 件 · '+d+' · 單件 '+sp+'（含停機 '+g+'）秒',m2tag:'計數',grp:'組別',xh:{date:'日期',mode:'模式',n:'Loop數 / 件數',avg:'平均秒數 / 扣停機單件秒數',gross:'含停機單件秒數',hr:'小時產量',hrg:'小時產量(含停機)',tot:'總秒數',dt:'停機秒數',tgt:'目標件數',mp:'建議人數',det:'明細'},proc:'工段',opr:'車工名字',xls:'匯出 Excel',txt:'複製文字',delAll:'全部刪除',delAllQ:'再按一次全部刪除',noData:'沒有紀錄',xlsDone:'Excel 檔已產生',copied:'已複製，可直接貼到 Excel',txtT:'貼到 Excel 的文字',txtNote:'按「複製」後到 Excel 貼上，欄位用 Tab 分隔。',close:'關閉',copy:'複製',allDel:'已全部刪除',net2:'扣停機',gross2:'含停機'}};
+  sum2:(c,d,sp,g)=>c+' 件 · '+d+' · 單件 '+sp+'（含停機 '+g+'）秒',m2tag:'計數',grp:'廠別 / 組別',newOpt:'新項目，儲存後會記住',xh:{date:'日期',mode:'模式',n:'Loop數 / 件數',avg:'平均秒數 / 扣停機單件秒數',gross:'含停機單件秒數',hr:'小時產量',hrg:'小時產量(含停機)',tot:'總秒數',dt:'停機秒數',tgt:'目標件數',mp:'建議人數',det:'明細'},proc:'工段',opr:'車工名字',xls:'匯出 Excel',txt:'複製文字',delAll:'全部刪除',delAllQ:'再按一次全部刪除',noData:'沒有紀錄',xlsDone:'Excel 檔已產生',copied:'已複製，可直接貼到 Excel',txtT:'貼到 Excel 的文字',txtNote:'按「複製」後到 Excel 貼上，欄位用 Tab 分隔。',close:'關閉',copy:'複製',allDel:'已全部刪除',net2:'扣停機',gross2:'含停機'}};
 let lang='id';
 const t=()=>L[lang];
 const f2=x=>x.toFixed(2);
@@ -440,7 +453,7 @@ function recRows(){
   const p=n=>String(n).padStart(2,'0');
   const rows=recs.slice().reverse().map(r=>{
     const dt=r.ts?(d=>d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes()))(new Date(r.ts)):r.date;
-    const g=r.grp||'',pr=r.proc||'',o=r.opr||(r.grp||r.proc?'':(r.name||''));
+    const g=[r.fac,r.grp].filter(Boolean).join(' '),pr=r.proc||'',o=r.opr||(r.grp||r.proc?'':(r.name||''));
     if(r.type==='count'){const R=r.m2,st=m2stats(R,R.end||Date.now());
       return [dt,T.tab2,g,pr,o,R.count,+f2(st.spp),+f2(st.gross),st.spp?+(3600/st.spp).toFixed(1):'',st.gross?+(3600/st.gross).toFixed(1):'',Math.round(st.el/1000),Math.round(st.dt/1000),'','',R.downs.map(d=>mmss(d.e-d.s)+' '+(d.note||'-')).join('; ')];}
     const c=calc(r.laps,r.cfg||DEF);
@@ -534,7 +547,30 @@ $('clear').onclick=()=>{
   if(!armed){armed=true;$('clear').textContent=t().confirm;setTimeout(()=>{armed=false;$('clear').textContent=t().clear},2500);return}
   armed=false;laps=[];put(KEY,laps);stop();render();$('clear').textContent=t().clear;
 };
-let saveMode='m1';const LASTK='simple_lap_last_v1';
+let saveMode='m1';const LASTK='simple_lap_last_v1',OKEY='simple_lap_opts_v1';
+let opts=load(OKEY,null);
+if(!opts){opts={proc:[],opr:[]};recs.forEach(r=>{if(r.proc&&!opts.proc.includes(r.proc))opts.proc.push(r.proc);if(r.opr&&!opts.opr.includes(r.opr))opts.opr.push(r.opr)});put(OKEY,opts)}
+function fillLines(sel){const n=$('fFac').value.replace('GLD','');$('fLine').innerHTML=Array.from({length:20},(_,i)=>{const v='L'+n+'-'+String(i+1).padStart(2,'0');return '<option'+(v===sel?' selected':'')+'>'+v+'</option>'}).join('')}
+$('fFac').onchange=()=>{const last=load(LASTK,{});fillLines(last.fac===$('fFac').value?last.grp:'')};
+function remember(k,v){if(!v)return;const a=opts[k].filter(x=>x!==v);a.unshift(v);opts[k]=a.slice(0,300);put(OKEY,opts)}
+function setupCombo(inp,box,key,next){
+  const show=()=>{const q=inp.value.trim().toLowerCase();
+    const list=opts[key].filter(v=>!q||v.toLowerCase().includes(q)).slice(0,30);
+    const exact=opts[key].some(v=>v.toLowerCase()===q);
+    let h=list.map(v=>{const i=v.toLowerCase().indexOf(q),hl=q&&i>=0?esc(v.slice(0,i))+'<b>'+esc(v.slice(i,i+q.length))+'</b>'+esc(v.slice(i+q.length)):esc(v);
+      return '<div class="opt"><button type="button" class="pick" data-v="'+esc(v)+'">'+hl+'</button><button type="button" class="rm" data-rm="'+esc(v)+'" aria-label="remove">×</button></div>'}).join('');
+    if(q&&!exact)h+='<div class="hint">“'+esc(inp.value.trim())+'” — '+t().newOpt+'</div>';
+    box.innerHTML=h;box.classList.toggle('on',!!h);};
+  inp.addEventListener('focus',show);inp.addEventListener('input',show);
+  inp.addEventListener('blur',()=>setTimeout(()=>box.classList.remove('on'),150));
+  box.addEventListener('pointerdown',e=>e.preventDefault());
+  box.addEventListener('click',e=>{const pk=e.target.closest('[data-v]'),rm=e.target.closest('[data-rm]');
+    if(pk){inp.value=pk.dataset.v;box.classList.remove('on');next&&next()}
+    else if(rm){opts[key]=opts[key].filter(x=>x!==rm.dataset.rm);put(OKEY,opts);show()}});
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){box.classList.remove('on');next?next():doSave()}});
+}
+setupCombo($('fProc'),$('sgProc'),'proc',()=>$('name').focus());
+setupCombo($('name'),$('sgOpr'),'opr',null);
 function flash2(msg){$('sub2').textContent=msg;setTimeout(render2,1800)}
 function openSave(){
   saveMode=mode;
@@ -546,14 +582,15 @@ function openSave(){
   const {avg,hr}=calc(laps);
   $('msum').textContent=t().cnt(laps.length)+' · '+f2(avg)+' '+t().sec+' · '+(hr?hr.toFixed(1):'—')+' '+t().pcs+t().perHr;
   }
-  const last=load(LASTK,{});$('fGrp').value=last.grp||'';$('fProc').value=last.proc||'';$('name').value='';
-  $('modal').classList.add('on');$('mask2').classList.add('on');setTimeout(()=>$(last.grp?'name':'fGrp').focus(),50);
+  const last=load(LASTK,{});$('fFac').value=last.fac||'GLD6';fillLines(last.grp);$('fProc').value=last.proc||'';$('name').value='';
+  $('modal').classList.add('on');$('mask2').classList.add('on');
 }
 function closeSave(){$('modal').classList.remove('on');$('mask2').classList.remove('on');$('name').blur()}
 function doSave(){
   const d=new Date(),p=n=>String(n).padStart(2,'0');
-  const who={grp:$('fGrp').value.trim(),proc:$('fProc').value.trim(),opr:$('name').value.trim(),ts:d.getTime()};
-  put(LASTK,{grp:who.grp,proc:who.proc});
+  const who={fac:$('fFac').value,grp:$('fLine').value,proc:$('fProc').value.trim(),opr:$('name').value.trim(),ts:d.getTime()};
+  put(LASTK,{fac:who.fac,grp:who.grp,proc:who.proc});remember('proc',who.proc);remember('opr',who.opr);
+  $('sgProc').classList.remove('on');$('sgOpr').classList.remove('on');
   who.name=[who.grp,who.proc,who.opr].filter(Boolean).join(' · ');
   if(saveMode==='m2'){
     if(m2run())finish2();
@@ -566,8 +603,7 @@ function doSave(){
   laps=[];put(KEY,laps);stop();$('name').value='';closeSave();render();renderRecs();flash(t().saved);
 }
 $('save').onclick=openSave;$('save2').onclick=openSave;$('mCancel').onclick=closeSave;$('mask2').onclick=()=>{closeSave();closeCfg();closeTgt()};$('mOk').onclick=doSave;
-$('name').addEventListener('keydown',e=>{if(e.key==='Enter')doSave()});
-$('fGrp').addEventListener('keydown',e=>{if(e.key==='Enter')$('fProc').focus()});$('fProc').addEventListener('keydown',e=>{if(e.key==='Enter')$('name').focus()});
+
 function cPreview(){const b=parseFloat($('cBase').value),k=parseFloat($('cK').value);$('cPrev').textContent=(isFinite(b)?b:'?')+' ÷ ('+t().fx+' × '+(isFinite(k)?k:'?')+')'}
 function openCfg(){$('cBase').value=cfg.base;$('cK').value=cfg.k;$('cErr').textContent='';cPreview();$('cmodal').classList.add('on');$('mask2').classList.add('on')}
 function closeCfg(){$('cmodal').classList.remove('on');$('mask2').classList.remove('on')}
