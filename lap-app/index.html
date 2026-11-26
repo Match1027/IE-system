@@ -410,8 +410,8 @@ function paint2(now=Date.now()){
 }
 function render2(){
   const run=m2run(), ended=!!M2.end, idle=!M2.start;
-  $('durs').innerHTML=[5,10,15,30].map(m=>'<button class="dchip num'+(M2.durMin===m?' on':'')+'" data-m="'+m+'"'+(idle?'':' disabled')+'>'+m+'</button>').join('')+
-    '<input type="number" id="dcust" inputmode="numeric" min="1" max="240" aria-label="'+t().customM+'" placeholder="'+t().menit+'" value="'+([5,10,15,30].includes(M2.durMin)?'':M2.durMin)+'"'+(idle?'':' disabled')+'>';
+  $('durs').innerHTML=[5,8,10,15].map(m=>'<button class="dchip num'+(M2.durMin===m?' on':'')+'" data-m="'+m+'"'+(idle?'':' disabled')+'>'+m+'</button>').join('')+
+    '<input type="number" id="dcust" inputmode="numeric" min="1" max="240" aria-label="'+t().customM+'" placeholder="'+t().menit+'" value="'+([5,8,10,15].includes(M2.durMin)?'':M2.durMin)+'"'+(idle?'':' disabled')+'>';
   $('plus').textContent=idle?t().start2(M2.durMin):(run?(M2.over?t().plusLast(M2.count):t().plus(M2.count)):t().ended2);
   $('plus').classList.toggle('lastp',!!(run&&M2.over));
   $('plus').disabled=ended;
