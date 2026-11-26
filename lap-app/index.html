@@ -158,6 +158,13 @@ body.dragging{user-select:none;-webkit-user-select:none;overscroll-behavior:none
 .dz.del{border-color:var(--danger);color:var(--danger)}
 .dz.hot{background:var(--primary);color:var(--on)}
 .dz.del.hot{background:var(--danger);color:#fff}
+.acell{flex-direction:column;align-items:flex-end;justify-content:center;border:0;font:inherit;line-height:1.15;cursor:pointer;min-height:52px}
+.acell span{font-size:17px;font-weight:700}
+.acell small{font-size:12px;font-weight:600;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ghead{min-height:30px;padding-top:2px;padding-bottom:2px}
+.hl2{text-align:right;font-size:13px;font-weight:700;color:var(--primary);padding:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qchips button.on{background:var(--primary);color:var(--on);border-color:var(--primary)}
+.mrow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px}
 </style>
 </head>
 <body>
@@ -219,6 +226,12 @@ body.dragging{user-select:none;-webkit-user-select:none;overscroll-behavior:none
 <div class="fly num" id="fly" aria-hidden="true"></div>
 <div class="dropbar" id="dropbar"><div class="dz" id="dzNew"></div><div class="dz del" id="dzDel"></div></div>
 <div class="mask" id="mask"></div>
+<div class="modal" id="lbmodal" role="dialog" aria-modal="true" aria-labelledby="lbTitle">
+  <h2 id="lbTitle"></h2>
+  <div class="qchips" id="lbChips"></div>
+  <label class="fl"><span id="lbInL"></span><input type="text" id="lbIn" autocomplete="off"></label>
+  <div class="mrow3"><button class="btn danger" id="lbClear"></button><button class="btn" id="lbCancel"></button><button class="btn pri" id="lbOk"></button></div>
+</div>
 <div class="mask" id="mask2"></div>
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
   <h2 id="mTitle"></h2>
@@ -281,6 +294,7 @@ const put=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const normRows=a=>(a||[]).map(x=>Array.isArray(x)?x:[x]);
 const trimRow=r=>{while(r.length&&r[r.length-1]==null)r.pop();return r};
 let laps=normRows(load(KEY,[])), recs=load(RKEY,[]);
+const LKEY='simple_lap_cols_v1';let colLab=load(LKEY,[]);
 const CKEY='simple_lap_cfg_v1', DEF={base:3600,k:1.2};
 let cfg=Object.assign({},DEF,load(CKEY,{}));
 const TKEY='simple_lap_target_v1';let target=load(TKEY,0);
@@ -300,7 +314,7 @@ const L={
   dlL:'Catatan downtime',noDown:'Tidak ada downtime',dTitle:'Downtime — sedang berhenti',dNoteL:'Alasan (bisa ditulis)',dNoteP:'contoh: benang putus',resume:'Lanjut kerja',
   quick:['Benang putus','Ambil barang','Ganti bobbin','Mesin rusak','Tunggu bahan','Ke toilet','Lainnya'],
   needCnt:'Belum ada output untuk disimpan',dur:'Durasi',customM:'menit lain',delDown:'Hapus downtime',
-  sum2:(c,d,sp,g)=>c+' pcs · '+d+' · '+sp+' / '+g+' sec/pcs',m2tag:'Hitung',dzNew:'Baris baru',dzDel:'Hapus',grp:'Pabrik / Line',newOpt:'Baru — akan disimpan',xh:{date:'Tanggal',mode:'Mode',n:'Loop / pcs',avg:'Avg. sec / sec tanpa downtime',gross:'Sec termasuk downtime',hr:'Output/jam',hrg:'Output/jam (termasuk downtime)',tot:'Total sec',dt:'Downtime (sec)',tgt:'Target',mp:'Saran operator',det:'Detail'},proc:'Proses',opr:'Nama operator',xls:'Export Excel',txt:'Salin teks',delAll:'Hapus semua',delAllQ:'Tekan lagi = hapus semua',noData:'Belum ada catatan',xlsDone:'File Excel dibuat',copied:'Tersalin — tempel di Excel',txtT:'Teks untuk Excel',txtNote:'Tekan Salin, lalu tempel (paste) di Excel. Kolom dipisah tab.',close:'Tutup',copy:'Salin',allDel:'Semua catatan dihapus',net2:'Tanpa downtime',gross2:'Termasuk downtime'},
+  sum2:(c,d,sp,g)=>c+' pcs · '+d+' · '+sp+' / '+g+' sec/pcs',m2tag:'Hitung',dzNew:'Baris baru',dzDel:'Hapus',presets:['Merapikan','Menunggu','Mengambil','Menjahit','Potong benang'],labT:n=>'Kolom '+n+' — waktu untuk apa?',labIn:'Atau tulis sendiri',clearL:'Kosongkan',colN:n=>'Kolom '+n,totCol:'Total',shSum:'Ringkasan',shDet:'Detail loop',grp:'Pabrik / Line',newOpt:'Baru — akan disimpan',xh:{date:'Tanggal',mode:'Mode',n:'Loop / pcs',avg:'Avg. sec / sec tanpa downtime',gross:'Sec termasuk downtime',hr:'Output/jam',hrg:'Output/jam (termasuk downtime)',tot:'Total sec',dt:'Downtime (sec)',tgt:'Target',mp:'Saran operator',det:'Detail'},proc:'Proses',opr:'Nama operator',xls:'Export Excel',txt:'Salin teks',delAll:'Hapus semua',delAllQ:'Tekan lagi = hapus semua',noData:'Belum ada catatan',xlsDone:'File Excel dibuat',copied:'Tersalin — tempel di Excel',txtT:'Teks untuk Excel',txtNote:'Tekan Salin, lalu tempel (paste) di Excel. Kolom dipisah tab.',close:'Tutup',copy:'Salin',allDel:'Semua catatan dihapus',net2:'Tanpa downtime',gross2:'Termasuk downtime'},
  zh:{ttl:'分段計時',sw:'Bahasa Indonesia',start:'開始',lap:'記一個 Loop',stop:'停止',clear:'全部清除',confirm:'再按一次確認清除',
   idle:'按開始計時',cont:'按開始繼續計時',run:n=>'第 '+n+' 個 Loop 計時中',
   empty:'還沒有 Loop',sec:'秒',pcs:'件',cnt:n=>n+' 個',avg:'平均秒數',tot:'總秒數',avgS:'平均',totS:'總計',hr:'小時產量',
@@ -315,7 +329,7 @@ const L={
   dlL:'停機紀錄',noDown:'沒有停機',dTitle:'停機中',dNoteL:'原因（可自行填寫）',dNoteP:'例：斷線',resume:'繼續工作',
   quick:['斷線','拿東西','換底線','機台故障','等料','上廁所','其他'],
   needCnt:'還沒有產量可以儲存',dur:'時間',customM:'其他分鐘',delDown:'刪除停機',
-  sum2:(c,d,sp,g)=>c+' 件 · '+d+' · 單件 '+sp+'（含停機 '+g+'）秒',m2tag:'計數',dzNew:'新的一列',dzDel:'刪除',grp:'廠別 / 組別',newOpt:'新項目，儲存後會記住',xh:{date:'日期',mode:'模式',n:'Loop數 / 件數',avg:'平均秒數 / 扣停機單件秒數',gross:'含停機單件秒數',hr:'小時產量',hrg:'小時產量(含停機)',tot:'總秒數',dt:'停機秒數',tgt:'目標件數',mp:'建議人數',det:'明細'},proc:'工段',opr:'車工名字',xls:'匯出 Excel',txt:'複製文字',delAll:'全部刪除',delAllQ:'再按一次全部刪除',noData:'沒有紀錄',xlsDone:'Excel 檔已產生',copied:'已複製，可直接貼到 Excel',txtT:'貼到 Excel 的文字',txtNote:'按「複製」後到 Excel 貼上，欄位用 Tab 分隔。',close:'關閉',copy:'複製',allDel:'已全部刪除',net2:'扣停機',gross2:'含停機'}};
+  sum2:(c,d,sp,g)=>c+' 件 · '+d+' · 單件 '+sp+'（含停機 '+g+'）秒',m2tag:'計數',dzNew:'新的一列',dzDel:'刪除',presets:['整理','等待','拿取','車縫','剪線'],labT:n=>'第 '+n+' 欄是什麼時間？',labIn:'或自行輸入',clearL:'清除',colN:n=>'第'+n+'欄',totCol:'合計',shSum:'總表',shDet:'Loop 明細',grp:'廠別 / 組別',newOpt:'新項目，儲存後會記住',xh:{date:'日期',mode:'模式',n:'Loop數 / 件數',avg:'平均秒數 / 扣停機單件秒數',gross:'含停機單件秒數',hr:'小時產量',hrg:'小時產量(含停機)',tot:'總秒數',dt:'停機秒數',tgt:'目標件數',mp:'建議人數',det:'明細'},proc:'工段',opr:'車工名字',xls:'匯出 Excel',txt:'複製文字',delAll:'全部刪除',delAllQ:'再按一次全部刪除',noData:'沒有紀錄',xlsDone:'Excel 檔已產生',copied:'已複製，可直接貼到 Excel',txtT:'貼到 Excel 的文字',txtNote:'按「複製」後到 Excel 貼上，欄位用 Tab 分隔。',close:'關閉',copy:'複製',allDel:'已全部刪除',net2:'扣停機',gross2:'含停機'}};
 let lang='id';
 const t=()=>L[lang];
 const f2=x=>x.toFixed(2);
@@ -348,13 +362,14 @@ function renderMp(hr){
 }
 function gridHTML(rows,cols,dg){
   const C=calc(rows),gt='grid-template-columns:2.4em repeat('+cols+',minmax(52px,1fr))'+(cols>1?' minmax(56px,auto)':'')+' 44px';
-  return '<div class="gscroll"><div class="gtab">'+rows.map((r,i)=>
+  const hasLab=colLab.slice(0,cols).some(Boolean);
+  return '<div class="gscroll"><div class="gtab">'+(hasLab?'<div class="grow2 ghead" style="'+gt+'"><span></span>'+Array.from({length:cols},(_,j)=>'<span class="hl2">'+esc(colLab[j]||'')+'</span>').join('')+(cols>1?'<span class="rs">'+t().totCol+'</span>':'')+'<span></span></div>':'')+rows.map((r,i)=>
     '<div class="grow2" data-row="'+i+'" style="'+gt+'"><span class="n num">#'+(i+1)+'</span>'+
     Array.from({length:cols},(_,j)=>{const g=dg&&dg.ghost&&dg.ghost.r===i&&dg.ghost.j===j;
       return '<span class="cell num'+(r[j]==null?' emp':'')+(g?' ghost':'')+'" data-r="'+i+'" data-j="'+j+'">'+(r[j]==null?'':f2(r[j]))+'</span>'}).join('')+
     (cols>1?'<span class="rs num">'+f2(r.reduce((x,y)=>x+(y||0),0))+'</span>':'')+
     (dg?'<span></span>':'<button class="del" data-i="'+i+'" aria-label="'+t().del(i+1)+'">'+X+'</button>')+'</div>').join('')+
-    '<div class="grow2 gavg" style="'+gt+'"><span class="n">'+t().avgS+'</span>'+Array.from({length:cols},(_,j)=>'<span class="cell num">'+(C.colAvg[j]!=null&&j<C.cols?f2(C.colAvg[j]):'')+'</span>').join('')+
+    '<div class="grow2 gavg" style="'+gt+'"><span class="n">'+t().avgS+'</span>'+Array.from({length:cols},(_,j)=>'<button type="button" class="cell acell num" data-ac="'+j+'"'+(dg?' disabled':'')+'><span>'+(C.colAvg[j]!=null&&j<C.cols?f2(C.colAvg[j]):'')+'</span><small>'+(colLab[j]?esc(colLab[j]):'✎')+'</small></button>').join('')+
     (cols>1?'<span class="rs num">'+f2(C.avg)+'</span>':'')+'<span></span></div></div></div>';
 }
 function render(){
@@ -392,6 +407,7 @@ function renderRecs(){
       '<div class="stat num"><span>'+t().avgS+' <b>'+f2(avg)+'</b> '+t().sec+'</span><span>'+t().totS+' <b>'+f2(tot)+'</b> '+t().sec+'</span></div></div>'+
       '<div class="out num">'+(hr?hr.toFixed(1):'—')+' '+t().pcs+'<div class="meta">'+t().perHr+'</div></div>'+
       '<button class="del" data-r="'+i+'" aria-label="'+t().delRec+'">'+X+'</button></div>'+
+      '<div class="stat num">'+calc(r.laps,r.cfg||DEF).colAvg.map((v,j)=>'<span>'+esc(colName(r.cols,j))+' <b>'+f2(v)+'</b></span>').join('')+'</div>'+
       '<details><summary>'+t().detail+'</summary><div class="chips num">'+normRows(r.laps).map((s,k)=>'<span class="chip">#'+(k+1)+' '+s.map(v=>v==null?'–':f2(v)).join(' | ')+'</span>').join('')+'</div></details></div>';
   }).join(''):'<div class="empty">'+t().noRec+'</div>';
 }
@@ -501,7 +517,7 @@ function recRows(){
     if(r.type==='count'){const R=r.m2,st=m2stats(R,R.end||Date.now());
       return [dt,T.tab2,g,pr,o,R.count,+f2(st.spp),+f2(st.gross),st.spp?+(3600/st.spp).toFixed(1):'',st.gross?+(3600/st.gross).toFixed(1):'',Math.round(st.el/1000),Math.round(st.dt/1000),'','',R.downs.map(d=>mmss(d.e-d.s)+' '+(d.note||'-')).join('; ')];}
     const c=calc(r.laps,r.cfg||DEF);
-    return [dt,T.tab1,g,pr,o,r.laps.length,+f2(c.avg),'',c.hr?+c.hr.toFixed(1):'','',+f2(c.tot),'',r.target||'',r.target&&c.hr?Math.ceil(r.target/c.hr-1e-9):'',normRows(r.laps).map(x=>x.map(v=>v==null?'-':f2(v)).join('/')).join('; ')];
+    return [dt,T.tab1,g,pr,o,r.laps.length,+f2(c.avg),'',c.hr?+c.hr.toFixed(1):'','',+f2(c.tot),'',r.target||'',r.target&&c.hr?Math.ceil(r.target/c.hr-1e-9):'',c.colAvg.map((v,j)=>colName(r.cols,j)+' '+f2(v)).join(' / ')];
   });
   return [H,...rows];
 }
@@ -521,22 +537,37 @@ function zip(files){
   const end=new Uint8Array([0x50,0x4b,5,6,...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cs),...u32(off),...u16(0)]);
   return new Blob([...parts,...cen,end],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 }
-function xlsx(rows){
+function xlsx(sheets){
   const x=v=>String(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,'');
   const col=i=>{let s='';i++;while(i){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s};
-  const sd=rows.map((r,ri)=>'<row r="'+(ri+1)+'">'+r.map((v,ci)=>{const ref=col(ci)+(ri+1);
-    if(v===''||v==null)return '';
-    if(typeof v==='number'&&isFinite(v))return '<c r="'+ref+'"'+(ri===0?' s="1"':'')+'><v>'+v+'</v></c>';
-    return '<c r="'+ref+'" t="inlineStr"'+(ri===0?' s="1"':'')+'><is><t xml:space="preserve">'+x(v)+'</t></is></c>'}).join('')+'</row>').join('');
-  const widths=[17,14,12,14,16,8,10,10,10,10,10,10,8,8,40];
-  const sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>'+widths.map((w,i)=>'<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>').join('')+'</cols><sheetData>'+sd+'</sheetData></worksheet>';
+  const sheetXml=sh=>{const B=sh.bold||new Set([0]);
+    const sd=sh.rows.map((r,ri)=>'<row r="'+(ri+1)+'">'+r.map((v,ci)=>{const ref=col(ci)+(ri+1),st=B.has(ri)?' s="1"':'';
+      if(v===''||v==null)return '';
+      if(typeof v==='number'&&isFinite(v))return '<c r="'+ref+'"'+st+'><v>'+v+'</v></c>';
+      return '<c r="'+ref+'" t="inlineStr"'+st+'><is><t xml:space="preserve">'+x(v)+'</t></is></c>'}).join('')+'</row>').join('');
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+(sh.freeze?'<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>':'')+'<cols>'+sh.widths.map((w,i)=>'<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>').join('')+'</cols><sheetData>'+sd+'</sheetData></worksheet>'};
+  const n=sheets.length,rng=Array.from({length:n},(_,i)=>i+1);
   return zip([
-   ['[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
+   ['[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+rng.map(i=>'<Override PartName="/xl/worksheets/sheet'+i+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join('')+'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
    ['_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
-   ['xl/workbook.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Timer Loop" sheetId="1" r:id="rId1"/></sheets></workbook>'],
-   ['xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+   ['xl/workbook.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+sheets.map((sh,i)=>'<sheet name="'+x(sh.name)+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>').join('')+'</sheets></workbook>'],
+   ['xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+rng.map(i=>'<Relationship Id="rId'+i+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+i+'.xml"/>').join('')+'<Relationship Id="rId'+(n+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
    ['xl/styles.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFDDEBF7"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'],
-   ['xl/worksheets/sheet1.xml',sheet]]);
+   ...sheets.map((sh,i)=>['xl/worksheets/sheet'+(i+1)+'.xml',sheetXml(sh)])]);
+}
+const colName=(labs,j)=>(labs&&labs[j])||t().colN(j+1);
+function detailRows(){
+  const T=t(),out=[],bold=new Set(),p=n=>String(n).padStart(2,'0');
+  recs.slice().reverse().filter(r=>r.type!=='count').forEach(r=>{
+    const rows=normRows(r.laps),C=calc(rows,r.cfg||DEF),labs=r.cols||[];
+    const dt=r.ts?(d=>d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes()))(new Date(r.ts)):r.date;
+    bold.add(out.length);out.push([dt,[r.fac,r.grp].filter(Boolean).join(' '),r.proc||'',r.opr||r.name||'']);
+    bold.add(out.length);out.push(['#',...Array.from({length:C.cols},(_,j)=>colName(labs,j)),T.totCol]);
+    rows.forEach((rw,i)=>out.push([i+1,...Array.from({length:C.cols},(_,j)=>rw[j]==null?'':+f2(rw[j])),+f2(rw.reduce((a,b)=>a+(b||0),0))]));
+    bold.add(out.length);out.push([T.avgS,...C.colAvg.map(v=>+f2(v)),+f2(C.avg)]);
+    out.push([]);
+  });
+  return {rows:out,bold};
 }
 let dlNS=null;try{if(window.claude&&typeof window.claude.use==='function')window.claude.use('downloads').then(n=>{dlNS=n}).catch(()=>{})}catch(e){}
 function dmsg(m){$('dmsg').textContent=m;clearTimeout(dmsg._t);dmsg._t=setTimeout(()=>$('dmsg').textContent='',2500)}
@@ -544,13 +575,13 @@ $('xlsBtn').onclick=async()=>{
   if(!recs.length){dmsg(t().noData);return}
   const d=new Date(),p=n=>String(n).padStart(2,'0');
   const fn='TimerLoop_'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+'.xlsx';
-  const blob=xlsx(recRows());
+  const D=detailRows(),blob=xlsx([{name:t().shSum,rows:recRows(),widths:[17,14,12,14,16,8,10,10,10,10,10,10,8,8,40],freeze:true},{name:t().shDet,rows:D.rows.length?D.rows:[[t().noData]],bold:D.bold,widths:[17,12,12,12,12,12,12,12,12,12]}]);
   if(dlNS){try{await dlNS.save({filename:fn,data:blob});dmsg(t().xlsDone)}catch(e){if(!e||e.code!=='declined')dmsg('Excel: '+((e&&e.code)||'error'))}return}
   try{const file=new File([blob],fn,{type:blob.type});
     if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:fn});dmsg(t().xlsDone);return}}catch(e){if(e&&e.name==='AbortError')return}
   try{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);dmsg(t().xlsDone)}catch(e){dmsg('Error')}
 };
-const tsv=()=>recRows().map(r=>r.map(v=>String(v).replace(/[\t\n\r]/g,' ')).join('\t')).join('\n');
+const tsv=()=>[...recRows(),[],...detailRows().rows].map(r=>r.map(v=>String(v).replace(/[\t\n\r]/g,' ')).join('\t')).join('\n');
 function closeX(){$('xmodal').classList.remove('on')}
 $('txtBtn').onclick=async()=>{
   if(!recs.length){dmsg(t().noData);return}
@@ -575,6 +606,7 @@ function applyLang(){
   $('name').placeholder='';$('lGrp').textContent=t().grp;$('lProc').textContent=t().proc;$('lOpr').textContent=t().opr;
   $('lXls').textContent=t().xls;$('lTxt').textContent=t().txt;$('lDelAll').textContent=t().delAll;$('xTitle').textContent=t().txtT;$('xNote').textContent=t().txtNote;$('xClose').textContent=t().close;$('xCopy').textContent=t().copy;
   $('save').setAttribute('aria-label',t().save);$('mTitle').textContent=t().saveT;$('mCancel').textContent=t().cancel;$('mOk').textContent=t().save;$('lRec').textContent=t().rec;
+  $('lbInL').textContent=t().labIn;$('lbClear').textContent=t().clearL;$('lbCancel').textContent=t().cancel;$('lbOk').textContent=t().save;
   $('dzNew').textContent=t().dzNew;$('dzDel').textContent=t().dzDel;
   $('tab1').textContent=t().tab1;$('tab2').textContent=t().tab2;$('downBtn').textContent=t().down;
   $('lCnt').textContent=t().cntL;$('lDt').textContent=t().dtL;$('lNet').textContent=t().netL;$('lSpp').textContent=t().sppL;$('lHr2').textContent=t().hr2L;$('lHr3').textContent=t().hr2L;$('lGross').textContent=t().grossL;$('lDl').textContent=t().dlL;
@@ -585,7 +617,8 @@ function applyLang(){
 
 $('lap').onclick=lap;
 $('stop').onclick=stop;
-$('list').onclick=e=>{const b=e.target.closest('.del');if(b){laps.splice(+b.dataset.i,1);put(KEY,laps);render();ui();return}
+$('list').onclick=e=>{const ac=e.target.closest('.acell');if(ac&&!drag){openLab(+ac.dataset.ac);return}
+  const b=e.target.closest('.del');if(b){laps.splice(+b.dataset.i,1);put(KEY,laps);render();ui();return}
 };
 /* ---- drag & drop cells ---- */
 let drag=null,lpT2=0,lpPt=null;
@@ -657,6 +690,15 @@ $('clear').onclick=()=>{
   if(!armed){armed=true;$('clear').textContent=t().confirm;setTimeout(()=>{armed=false;$('clear').textContent=t().clear},2500);return}
   armed=false;laps=[];put(KEY,laps);stop();render();$('clear').textContent=t().clear;
 };
+let labJ=0;
+function openLab(j){labJ=j;$('lbTitle').textContent=t().labT(j+1);$('lbIn').value=colLab[j]||'';
+  $('lbChips').innerHTML=t().presets.map(q=>'<button type="button" class="'+(colLab[j]===q?'on':'')+'">'+esc(q)+'</button>').join('');
+  $('lbmodal').classList.add('on');$('mask2').classList.add('on')}
+function closeLab(){$('lbmodal').classList.remove('on');$('mask2').classList.remove('on');$('lbIn').blur()}
+function setLab(v){while(colLab.length<=labJ)colLab.push('');colLab[labJ]=v;while(colLab.length&&!colLab[colLab.length-1])colLab.pop();put(LKEY,colLab);closeLab();render()}
+$('lbChips').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setLab(b.textContent)});
+$('lbOk').onclick=()=>setLab($('lbIn').value.trim());$('lbClear').onclick=()=>setLab('');$('lbCancel').onclick=closeLab;
+$('lbIn').addEventListener('keydown',e=>{if(e.key==='Enter')setLab($('lbIn').value.trim())});
 let saveMode='m1';const LASTK='simple_lap_last_v1',OKEY='simple_lap_opts_v1';
 let opts=load(OKEY,null);
 if(!opts){opts={proc:[],opr:[]};recs.forEach(r=>{if(r.proc&&!opts.proc.includes(r.proc))opts.proc.push(r.proc);if(r.opr&&!opts.opr.includes(r.opr))opts.opr.push(r.opr)});put(OKEY,opts)}
@@ -708,11 +750,11 @@ function doSave(){
     recs.unshift({...who,type:'count',date:p(d.getDate())+'/'+p(d.getMonth()+1)+' '+p(d.getHours())+':'+p(d.getMinutes()),m2:R,cfg:Object.assign({},cfg)});
     put(RKEY,recs);M2=m2blank();save2();$('name').value='';closeSave();render2();renderRecs();flash2(t().saved);return;
   }
-  recs.unshift({...who,date:p(d.getDate())+'/'+p(d.getMonth()+1)+' '+p(d.getHours())+':'+p(d.getMinutes()),laps:laps.map(r=>r.slice()),cfg:Object.assign({},cfg),target:target||0});
+  recs.unshift({...who,date:p(d.getDate())+'/'+p(d.getMonth()+1)+' '+p(d.getHours())+':'+p(d.getMinutes()),laps:laps.map(r=>r.slice()),cols:colLab.slice(),cfg:Object.assign({},cfg),target:target||0});
   put(RKEY,recs);
   laps=[];put(KEY,laps);stop();$('name').value='';closeSave();render();renderRecs();flash(t().saved);
 }
-$('save').onclick=openSave;$('save2').onclick=openSave;$('mCancel').onclick=closeSave;$('mask2').onclick=()=>{closeSave();closeCfg();closeTgt()};$('mOk').onclick=doSave;
+$('save').onclick=openSave;$('save2').onclick=openSave;$('mCancel').onclick=closeSave;$('mask2').onclick=()=>{closeSave();closeCfg();closeTgt();closeLab()};$('mOk').onclick=doSave;
 
 function cPreview(){const b=parseFloat($('cBase').value),k=parseFloat($('cK').value);$('cPrev').textContent=(isFinite(b)?b:'?')+' ÷ ('+t().fx+' × '+(isFinite(k)?k:'?')+')'}
 function openCfg(){$('cBase').value=cfg.base;$('cK').value=cfg.k;$('cErr').textContent='';cPreview();$('cmodal').classList.add('on');$('mask2').classList.add('on')}
@@ -740,7 +782,7 @@ $('recs').onclick=e=>{
   if(armedRec!==i){renderRecs();armedRec=i;const nb=$('recs').querySelector('[data-r="'+i+'"]');nb.textContent=t().delRecQ;nb.style.width='auto';nb.style.padding='0 10px';nb.style.fontSize='14px';nb.style.fontWeight='700';clearTimeout(armTimer);armTimer=setTimeout(()=>{armedRec=-1;renderRecs()},2500);return}
   armedRec=-1;recs.splice(i,1);put(RKEY,recs);renderRecs();
 };
-const d0=()=>['modal','cmodal','tmodal','xmodal'].some(id=>$(id).classList.contains('on'));
+const d0=()=>['modal','cmodal','tmodal','xmodal','lbmodal'].some(id=>$(id).classList.contains('on'));
 function openH(){$('drawer').classList.add('on');$('mask').classList.add('on');$('drawer').setAttribute('aria-hidden','false');$('closeH').focus()}
 function closeH(){$('drawer').classList.remove('on');$('mask').classList.remove('on');$('drawer').setAttribute('aria-hidden','true')}
 $('openH').onclick=openH;$('closeH').onclick=closeH;$('mask').onclick=closeH;
@@ -753,7 +795,7 @@ document.addEventListener('touchend',e=>{const p=e.changedTouches[0],dx=p.client
   const on=$('drawer').classList.contains('on');
   if(dx>0&&!on)openH(); else if(dx<0&&on)closeH();
 },{passive:true});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeX();closeH();closeSave();closeCfg();closeTgt()}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeLab();closeX();closeH();closeSave();closeCfg();closeTgt()}});
 $('lang').onclick=()=>{lang=lang==='id'?'zh':'id';applyLang()};
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/BUTTON|INPUT/.test(e.target.tagName)&&!$('drawer').classList.contains('on')&&!d0()){e.preventDefault();if(mode==='m2'){if(!$('dscreen').classList.contains('on'))$('plus').click()}else lap()}});
 applyLang();setMode(mode);
