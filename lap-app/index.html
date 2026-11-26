@@ -99,6 +99,8 @@ h2{font-size:18px;margin:0}
 .dchip:disabled{opacity:.45}
 .durs input{width:84px;min-height:44px;border-radius:22px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;text-align:center}
 .ctrl3{display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:10px;margin-top:10px}
+.time.over{color:var(--warn)}
+.lap.lastp{background:var(--warn);color:#fff}
 .btn.warn{color:var(--warn);border-color:var(--warn);font-weight:700}
 .foot .k small .hl{display:inline;font-size:13px}
 .foot .k small .hv{font-size:15px;color:var(--text)}
@@ -269,7 +271,7 @@ const L={
   delRecQ:'Hapus?',unnamed:'Tanpa nama',perHr:'/jam',
   tab1:'Loop',tab2:'Hitung output',menit:'menit',start2:n=>'Mulai '+n+' menit',plus:n=>'+1   ('+n+' pcs)',
   down:'Downtime',end2:'Selesai',end2Q:'Tekan lagi = selesai',reset2:'Ulang',reset2Q:'Tekan lagi = ulang',
-  idle2:'Pilih durasi, lalu tekan Mulai',run2:'Sedang menghitung — tekan +1 tiap 1 pcs selesai',ended2:'Waktu habis / selesai',
+  idle2:'Pilih durasi, lalu tekan Mulai',run2:'Sedang menghitung — tekan +1 tiap 1 pcs selesai',ended2:'Selesai',over2:'Waktu habis — tekan +1 saat pcs terakhir selesai',plusLast:n=>'+1 pcs terakhir ('+(n+1)+')',done2:t=>'Selesai — waktu dihitung sampai +1 terakhir: '+t,overL:'Lewat',
   remain:'Sisa',cntL:'Output (pcs)',dtL:'Total downtime',netL:'Waktu kerja bersih',sppL:'Sec per pcs (tanpa downtime)',grossL:'Sec per pcs (termasuk downtime)',hr2L:'Output/jam',
   dlL:'Catatan downtime',noDown:'Tidak ada downtime',dTitle:'Downtime — sedang berhenti',dNoteL:'Alasan (bisa ditulis)',dNoteP:'contoh: benang putus',resume:'Lanjut kerja',
   quick:['Benang putus','Ambil barang','Ganti bobbin','Mesin rusak','Tunggu bahan','Ke toilet','Lainnya'],
@@ -284,7 +286,7 @@ const L={
   delRecQ:'確定刪除?',unnamed:'未命名',perHr:'/時',
   tab1:'Loop 計時',tab2:'計數產量',menit:'分鐘',start2:n=>'開始 '+n+' 分鐘',plus:n=>'+1   ('+n+' 件)',
   down:'停機紀錄',end2:'結束',end2Q:'再按一次結束',reset2:'重來',reset2Q:'再按一次重來',
-  idle2:'選擇時間後按開始',run2:'計數中 — 每完成 1 件按 +1',ended2:'時間到 / 已結束',
+  idle2:'選擇時間後按開始',run2:'計數中 — 每完成 1 件按 +1',ended2:'已結束',over2:'時間到 — 最後一件完成時按 +1',plusLast:n=>'+1 最後一件（第 '+(n+1)+' 件）',done2:t=>'已結束 — 時間算到最後一次 +1：'+t,overL:'超時',
   remain:'剩餘',cntL:'實際產量 (件)',dtL:'停機總時間',netL:'實際工作時間',sppL:'單件秒數（扣停機）',grossL:'單件秒數（含停機）',hr2L:'小時產量',
   dlL:'停機紀錄',noDown:'沒有停機',dTitle:'停機中',dNoteL:'原因（可自行填寫）',dNoteP:'例：斷線',resume:'繼續工作',
   quick:['斷線','拿東西','換底線','機台故障','等料','上廁所','其他'],
@@ -370,8 +372,8 @@ const mmss=ms=>{ms=Math.max(0,ms);const tsec=Math.floor(ms/1000);return Math.flo
 const durMs=()=>M2.durMin*60000;
 const m2run=()=>M2.start&&!M2.end;
 function m2stats(R=M2,now=Date.now()){
-  const endT=R.end||now, el=R.start?Math.min(endT-R.start,R.durMin*60000):0;
-  let dt=R.downs.reduce((a,d)=>a+(d.e-d.s),0); if(R.cur) dt+=Math.max(0,endT-R.cur.s);
+  const endT=R.end||now, el=R.start?Math.max(0,endT-R.start):0;
+  let dt=R.downs.reduce((a,d)=>a+Math.max(0,Math.min(d.e,endT)-d.s),0); if(R.cur) dt+=Math.max(0,endT-R.cur.s);
   const net=Math.max(0,el-dt), spp=R.count?net/1000/R.count:0, gross=R.count?el/1000/R.count:0;
   return {el,dt,net,spp,gross};
 }
@@ -380,19 +382,22 @@ function wakeOff(){try{wake&&wake.release()}catch(e){};wake=null}
 function beep(){try{if(!actx)return;const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;o.connect(g);g.connect(actx.destination);g.gain.value=.25;o.start();o.stop(actx.currentTime+.6)}catch(e){};try{navigator.vibrate&&navigator.vibrate([200,100,200,100,400])}catch(e){}}
 function finish2(at){
   if(!m2run())return;
-  M2.end=at||Date.now();
-  if(M2.cur){M2.downs.push({s:M2.cur.s,e:M2.end,note:M2.cur.note||''});M2.cur=null;$('dscreen').classList.remove('on');}
-  save2();cancelAnimationFrame(raf2);wakeOff();beep();render2();
+  M2.end=at||M2.last||Date.now();
+  if(M2.cur){if(M2.cur.s<M2.end)M2.downs.push({s:M2.cur.s,e:M2.end,note:M2.cur.note||''});M2.cur=null;$('dscreen').classList.remove('on');}
+  M2.downs=M2.downs.filter(d=>d.s<M2.end).map(d=>({...d,e:Math.min(d.e,M2.end)}));
+  save2();cancelAnimationFrame(raf2);wakeOff();try{navigator.vibrate&&navigator.vibrate(60)}catch(e){};render2();
 }
 function tick2(){
   if(!m2run())return;
   const now=Date.now();
-  if(now-M2.start>=durMs()){finish2(M2.start+durMs());return}
+  if(!M2.over&&now-M2.start>=durMs()){M2.over=true;save2();beep();render2()}
   paint2(now);raf2=requestAnimationFrame(tick2);
 }
 function paint2(now=Date.now()){
   const st=m2stats(M2,now);
-  $('cd').textContent=M2.start?mmss(durMs()-st.el):mmss(durMs());
+  const ov=M2.start&&st.el>durMs();
+  $('cd').textContent=!M2.start?mmss(durMs()):(M2.end?mmss(st.el):(ov?'+'+mmss(st.el-durMs()):mmss(durMs()-st.el)));
+  $('cd').classList.toggle('over',!!(ov&&!M2.end));
   $('cntB').textContent=M2.count;
   $('dtot').textContent=st.dt?mmss(st.dt):'0:00';
   $('net').textContent=M2.start?mmss(st.net):'—';
@@ -401,18 +406,19 @@ function paint2(now=Date.now()){
   const hr=st.spp>0?3600/st.spp:0, hrg=st.gross>0?3600/st.gross:0;
   $('hr2').textContent=hr?hr.toFixed(1)+' '+t().pcs:'—';
   $('hr3').textContent=hrg?hrg.toFixed(1)+' '+t().pcs:'—';
-  if(M2.cur){$('dtime').textContent=mmss(now-M2.cur.s);$('dremain').textContent=t().remain+' '+mmss(durMs()-st.el);}
+  if(M2.cur){$('dtime').textContent=mmss(now-M2.cur.s);$('dremain').textContent=st.el>durMs()?t().overL+' +'+mmss(st.el-durMs()):t().remain+' '+mmss(durMs()-st.el);}
 }
 function render2(){
   const run=m2run(), ended=!!M2.end, idle=!M2.start;
   $('durs').innerHTML=[5,10,15,30].map(m=>'<button class="dchip num'+(M2.durMin===m?' on':'')+'" data-m="'+m+'"'+(idle?'':' disabled')+'>'+m+'</button>').join('')+
     '<input type="number" id="dcust" inputmode="numeric" min="1" max="240" aria-label="'+t().customM+'" placeholder="'+t().menit+'" value="'+([5,10,15,30].includes(M2.durMin)?'':M2.durMin)+'"'+(idle?'':' disabled')+'>';
-  $('plus').textContent=idle?t().start2(M2.durMin):(run?t().plus(M2.count):t().ended2);
+  $('plus').textContent=idle?t().start2(M2.durMin):(run?(M2.over?t().plusLast(M2.count):t().plus(M2.count)):t().ended2);
+  $('plus').classList.toggle('lastp',!!(run&&M2.over));
   $('plus').disabled=ended;
   $('minus').disabled=!run||M2.count<1;
   $('downBtn').disabled=!run;
   $('end2').disabled=idle; $('end2').textContent=ended?t().reset2:t().end2;
-  $('sub2').textContent=idle?t().idle2:(run?t().run2:t().ended2);
+  $('sub2').textContent=idle?t().idle2:(run?(M2.over?t().over2:t().run2):t().done2(mmss(m2stats().el)));
   const done=M2.downs.map((d,i)=>({d,i}));
   $('dlist').innerHTML=done.length||M2.cur?done.map(({d,i})=>'<div class="item"><span class="n num">#'+(i+1)+'</span><span class="s num" style="flex:none;font-size:18px">'+mmss(d.e-d.s)+'</span><span class="note">'+esc(d.note||'—')+'</span><button class="del" data-d="'+i+'" aria-label="'+t().delDown+'">'+X+'</button></div>').reverse().join(''):'<div class="empty">'+t().noDown+'</div>';
   paint2();
@@ -423,9 +429,11 @@ $('durs').addEventListener('change',e=>{if(e.target.id==='dcust'&&!M2.start){con
 $('plus').onclick=()=>{
   if(M2.end)return;
   if(!M2.start){unlockAudio();M2.start=Date.now();save2();wakeOn();render2();tick2();return}
-  M2.count++;save2();try{navigator.vibrate&&navigator.vibrate(25)}catch(e){};render2();
+  const now=Date.now();M2.count++;M2.last=now;
+  if(M2.over){finish2(now);return}
+  save2();try{navigator.vibrate&&navigator.vibrate(25)}catch(e){};render2();
 };
-$('minus').onclick=()=>{if(m2run()&&M2.count>0){M2.count--;save2();render2()}};
+$('minus').onclick=()=>{if(m2run()&&M2.count>0){M2.count--;if(!M2.count)M2.last=0;save2();render2()}};
 $('downBtn').onclick=()=>{if(!m2run())return;dpos(null);M2.cur={s:Date.now(),note:''};save2();$('dnote').value='';$('dscreen').classList.add('on');paint2()};
 $('resume').onclick=()=>{if(!M2.cur)return;M2.downs.push({s:M2.cur.s,e:Date.now(),note:$('dnote').value.trim()});M2.cur=null;save2();$('dscreen').classList.remove('on');render2()};
 $('dnote').addEventListener('input',()=>{if(M2.cur){M2.cur.note=$('dnote').value;save2()}});
