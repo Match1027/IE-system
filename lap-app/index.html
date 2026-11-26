@@ -151,7 +151,9 @@ h2{font-size:18px;margin:0}
 .cell.ghost{background:none;outline:2px dashed var(--primary);color:var(--primary);opacity:.55}
 .fly{position:fixed;left:0;top:0;z-index:60;min-width:72px;padding:10px 12px;border-radius:10px;background:var(--primary);color:var(--on);font-size:20px;font-weight:700;text-align:center;box-shadow:0 10px 24px rgba(0,0,0,.3);pointer-events:none;display:none}
 .fly.on{display:block}
-body.dragging{user-select:none;-webkit-user-select:none;overscroll-behavior:none}
+body.dragging{user-select:none;-webkit-user-select:none;overscroll-behavior:none;touch-action:none}
+html.dragging,html.dragging body{overflow:hidden;overscroll-behavior:none}
+body.dragging .gscroll{overflow:hidden;touch-action:none}
 .dropbar{position:fixed;left:8px;right:8px;bottom:max(10px,env(safe-area-inset-bottom));z-index:55;display:none;grid-template-columns:1fr 1fr;gap:8px;max-width:560px;margin:0 auto}
 .dropbar.on{display:grid}
 .dz{min-height:64px;border-radius:14px;border:2px dashed var(--primary);background:var(--surface);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.18)}
@@ -647,10 +649,20 @@ function startDrag(cell,x,y){
   const r=+cell.dataset.r,j=+cell.dataset.j;if(laps[r]==null||laps[r][j]==null)return;
   drag={src:{r,j},v:laps[r][j],tgt:null,cols:Math.max(1,calc(laps).cols)+1};
   const f=$('fly');f.textContent=f2(drag.v);f.classList.add('on');moveFly(x,y);
-  document.body.classList.add('dragging');$('dropbar').classList.add('on');
+  document.body.classList.add('dragging');document.documentElement.classList.add('dragging');$('dropbar').classList.add('on');
   try{navigator.vibrate&&navigator.vibrate(30)}catch(_){}
-  paintDrag();
+  drag.x=x;drag.y=y;paintDrag();autoScroll();
 }
+function autoScroll(){
+  if(!drag)return;
+  const H=innerHeight,y=drag.y,top=90,botEnd=H-95,botStart=H-190;
+  let dy=0;
+  if(y<top)dy=-Math.ceil((top-y)/6)-2;
+  else if(y>botStart&&y<botEnd)dy=Math.ceil((y-botStart)/6)+2;
+  if(dy){const before=scrollY;scrollBy(0,dy);if(scrollY!==before)retarget()}
+  requestAnimationFrame(autoScroll);
+}
+function retarget(){const tg=hitTest(drag.x,drag.y);const same=(a,b)=>a===b||(a&&b&&typeof a==='object'&&typeof b==='object'&&a.r===b.r&&a.j===b.j);if(!same(tg,drag.tgt)){drag.tgt=tg;paintDrag()}}
 function moveFly(x,y){$('fly').style.transform='translate('+(x-36)+'px,'+(y-46)+'px) scale(1.08)'}
 function hitTest(x,y){
   const el=document.elementFromPoint(x,y);if(!el)return null;
@@ -662,15 +674,11 @@ function hitTest(x,y){
   return j<0?drag.tgt:{r:+row.dataset.row,j};
 }
 function dragMove(x,y){
-  moveFly(x,y);
-  if(y<70)scrollBy(0,-12);else if(y>innerHeight-130)scrollBy(0,12);
-  const tg=hitTest(x,y);
-  const same=(a,b)=>a===b||(a&&b&&typeof a==='object'&&typeof b==='object'&&a.r===b.r&&a.j===b.j);
-  if(!same(tg,drag.tgt)){drag.tgt=tg;paintDrag()}
+  moveFly(x,y);drag.x=x;drag.y=y;retarget();
 }
 function endDrag(){
   if(!drag)return;const d=drag;drag=null;
-  $('fly').classList.remove('on');document.body.classList.remove('dragging');$('dropbar').classList.remove('on');
+  $('fly').classList.remove('on');document.body.classList.remove('dragging');document.documentElement.classList.remove('dragging');$('dropbar').classList.remove('on');
   if(d.tgt){laps=applyMove(laps,d.src,d.tgt).rows.map(trimRow).filter(r=>r.some(x=>x!=null));put(KEY,laps)}
   render();ui();
 }
