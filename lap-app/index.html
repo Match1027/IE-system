@@ -803,7 +803,7 @@ applyLang();setMode(mode);
 if(M2.cur)$('dscreen').classList.add('on');
 if(m2run()){wakeOn();tick2()}
 }
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
+if('serviceWorker' in navigator){let hadCtl=!!navigator.serviceWorker.controller,rl=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadCtl&&!rl){rl=true;location.reload()}});navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(g=>g.update()).catch(()=>{})}
 </script>
 </body>
 </html>
