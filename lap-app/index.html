@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Timer Loop</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1f6feb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Timer Loop">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{color-scheme:light dark;
+  --bg:light-dark(#f5f7fa,#0f141a);--surface:light-dark(#fff,#18202a);--text:light-dark(#1b2430,#e8edf3);
+  --muted:light-dark(#5b6675,#9aa7b6);--primary:light-dark(#1f6feb,#6aa6ff);--on:light-dark(#fff,#0b1220);
+  --danger:light-dark(#c62828,#ff7b72);--border:light-dark(#d8dee6,#2f3b49);--soft:light-dark(#eef2f7,#212b37);--ok:light-dark(#1a7f37,#4cc26b);--warn:light-dark(#9a5b00,#f0b04a)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;min-height:100dvh;-webkit-tap-highlight-color:transparent}
+.wrap{max-width:520px;margin:0 auto;padding:16px 16px 40px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ttl{font-weight:700;font-size:18px;flex:1;text-align:center}
+.num{font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+button:focus-visible,input:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
+.time{font-size:clamp(56px,18vw,80px);font-weight:700;text-align:center;margin:8px 0 0}
+.sub{text-align:center;color:var(--muted)}
+.lap{width:100%;min-height:110px;margin-top:16px;border:0;border-radius:16px;background:var(--primary);color:var(--on);font-size:28px;font-weight:700}
+.lap:active{transform:scale(.98)}
+.ctrl{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.btn{min-height:52px;padding:0 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface)}
+.btn:disabled{opacity:.4}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn.pri{background:var(--primary);color:var(--on);border-color:var(--primary);font-weight:700}
+.list{margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.item{display:flex;align-items:center;justify-content:space-between;padding:4px 6px 4px 16px;min-height:56px;border-bottom:1px solid var(--border)}
+.item:last-child{border-bottom:0}
+.item .n{color:var(--muted);width:3em}
+.item .s{flex:1;font-size:20px;font-weight:600;text-align:right;padding-right:12px}
+.del{width:48px;height:48px;border:0;background:none;color:var(--danger);border-radius:10px;flex:none}
+.del svg{width:22px;height:22px}
+.empty{padding:20px;text-align:center;color:var(--muted)}
+.boxes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:18px}
+.foot{background:var(--surface);border:2px solid var(--primary);border-radius:12px;padding:10px 12px;text-align:left;display:block;width:100%;font:inherit;color:var(--text)}
+.foot.side{border-color:var(--ok,#1a7f37);cursor:pointer}
+.foot.side:active{transform:scale(.98)}
+.foot .k{padding:3px 0}
+.foot .k span{display:block;font-size:13px;color:var(--muted)}
+.foot .k b{font-size:20px;white-space:nowrap}
+.foot .big{font-size:28px!important;font-weight:700;color:var(--primary)}
+.foot.side .big{color:var(--ok,#1a7f37)}
+.foot small{display:block;font-size:13px;color:var(--muted)}
+.foot .f{color:var(--muted);font-size:12px;margin-top:4px;line-height:1.3}
+h2{font-size:18px;margin:0}
+.icon{position:relative;width:48px;height:48px;border:1px solid var(--border);border-radius:12px;background:var(--surface);display:inline-flex;align-items:center;justify-content:center;flex:none}
+.icon svg{width:24px;height:24px}
+.badge{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--primary);color:var(--on);font-size:12px;font-weight:700;line-height:20px;display:none}
+.badge.on{display:block}
+.tbox{position:relative}
+.icon.save{position:absolute;top:4px;right:0}
+.lg{position:absolute;bottom:-6px;right:-6px;min-width:22px;height:18px;padding:0 4px;border-radius:9px;background:var(--surface);border:1px solid var(--border);font-size:11px;font-weight:700;line-height:16px}
+.modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);width:min(92vw,400px);background:var(--surface);border-radius:16px;padding:18px;z-index:31;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s}
+.modal.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}
+#mask2{z-index:30}
+.msum{color:var(--muted);margin:6px 0 12px}
+.modal input,.fl input{width:100%;font:inherit;font-size:16px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:12px;min-height:52px;padding:0 12px}
+.fl{display:block;margin-top:10px}.fl span{display:block;font-size:14px;color:var(--muted);margin-bottom:4px}
+.err{color:var(--danger);font-size:14px;min-height:22px;margin:4px 0}
+.hrrow{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;border-radius:8px}
+.hrrow.press{background:var(--soft)}
+.mrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.mask{position:fixed;inset:0;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
+.mask.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;bottom:0;left:0;width:min(88vw,420px);background:var(--bg);border-right:1px solid var(--border);transform:translateX(-102%);transition:transform .22s ease-out;z-index:21;overflow-y:auto;padding:12px 12px 32px}
+.drawer.on{transform:none}
+.dhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.dhead h2{margin:0}
+@media (prefers-reduced-motion:reduce){.mask,.drawer{transition:none}}
+
+.rec{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px}
+.rec-h{display:flex;align-items:center;gap:6px;padding:8px 6px 8px 14px}
+.rec-h .info{flex:1;min-width:0}
+.rec-h .nm{font-weight:700;overflow-wrap:anywhere}
+.rec-h .meta{color:var(--muted);font-size:14px}
+.rec-h .out{font-size:20px;font-weight:700;color:var(--primary);text-align:right;white-space:nowrap}
+.stat{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:15px;margin-top:2px}
+.stat b{font-size:17px}
+.rec details{border-top:1px solid var(--border);padding:0 14px}
+.rec summary{min-height:44px;display:flex;align-items:center;color:var(--muted);font-size:14px;cursor:pointer}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding-bottom:12px}
+.chip{background:var(--soft);border-radius:8px;padding:2px 8px;font-size:14px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--soft);border-radius:12px;padding:4px;margin:12px 0 4px}
+.tab{min-height:44px;border:0;border-radius:9px;background:none;font-weight:600;color:var(--muted)}
+.tab.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.durs{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px}
+.dchip{min-height:44px;min-width:52px;padding:0 12px;border-radius:22px;border:1px solid var(--border);background:var(--surface);font-weight:600}
+.dchip.on{background:var(--primary);color:var(--on);border-color:var(--primary)}
+.dchip:disabled{opacity:.45}
+.durs input{width:84px;min-height:44px;border-radius:22px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;text-align:center}
+.ctrl3{display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:10px;margin-top:10px}
+.btn.warn{color:var(--warn);border-color:var(--warn);font-weight:700}
+.foot .k small .hl{display:inline;font-size:13px}
+.foot .k small .hv{font-size:15px;color:var(--text)}
+.foot .k.sep{border-top:1px solid var(--border);margin-top:6px;padding-top:8px}
+.foot.side2{border-color:var(--ok)}
+.foot.side2 .big{color:var(--ok)}
+.lh{font-size:15px;margin:16px 0 0;color:var(--muted)}
+.item .note{flex:1;padding:0 10px;overflow-wrap:anywhere}
+.dscreen{position:fixed;inset:0;z-index:40;display:none;background:rgba(0,0,0,.25)}
+.dscreen.on{display:block}
+.dwrap{position:fixed;left:50%;top:52%;transform:translate(-50%,-50%);width:min(92vw,400px);max-height:88dvh;overflow-y:auto;background:var(--surface);border:2px solid var(--warn);border-radius:18px;padding:0 16px 16px;box-shadow:0 12px 36px rgba(0,0,0,.35);animation:pop .16s ease-out}
+@keyframes pop{from{opacity:0;transform:translate(-50%,-46%)}to{opacity:1;transform:translate(-50%,-50%)}}
+.dhandle{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.dhandle::before{content:"";width:40px;height:5px;border-radius:3px;background:var(--border);position:absolute;top:6px;left:50%;transform:translateX(-50%)}
+.dwrap h2{text-align:center;color:var(--warn);font-size:18px;margin:10px 0 0}
+.dtime{font-size:clamp(48px,16vw,72px);font-weight:700;text-align:center;color:var(--warn);line-height:1.1}
+.dwrap .lap{min-height:72px;font-size:22px;margin-top:12px}
+.qchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.qchips button{min-height:44px;padding:0 14px;border-radius:22px;border:1px solid var(--border);background:var(--surface)}
+.rec .tagm{font-size:12px;font-weight:700;padding:1px 8px;border-radius:8px;background:var(--soft);margin-left:6px;vertical-align:middle}
+.dtools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:6px}
+.dtools .btn{min-height:56px;padding:4px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:13px;font-weight:600;line-height:1.2}
+.dtools svg{width:20px;height:20px}
+.dmsg{min-height:20px;font-size:14px;color:var(--ok);margin-bottom:6px;text-align:center}
+#xText{width:100%;height:200px;font:13px/1.4 ui-monospace,monospace;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px;white-space:pre;overflow:auto}
+.rec .who{color:var(--muted);font-size:13px;font-weight:400}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><button class="icon" id="openH" aria-label="History"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 103-6.7L3 8M3 3v5h5M12 7v5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="badge num" id="badge"></span></button><span id="ttl" class="ttl"></span><button class="icon" id="lang"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 12h18M12 3c2.5 2.6 3.7 5.6 3.7 9s-1.2 6.4-3.7 9c-2.5-2.6-3.7-5.6-3.7-9S9.5 5.6 12 3z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span class="lg" id="lg"></span></button></div>
+  <div class="tabs" role="tablist"><button class="tab on" id="tab1" role="tab"></button><button class="tab" id="tab2" role="tab"></button></div>
+  <section id="m1">
+  <div class="tbox"><div class="time num" id="time">0.00</div><button class="icon save" id="save"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button></div>
+  <div class="sub" id="sub"></div>
+  <button class="lap" id="lap"></button>
+  <div class="ctrl">
+    <button class="btn" id="stop" disabled></button>
+    <button class="btn danger" id="clear"></button>
+  </div>
+
+  <div class="boxes">
+    <div class="foot">
+      <div class="k"><span id="lAvg"></span><b class="num" id="avg">—</b></div>
+      <div class="k"><span id="lTot"></span><b class="num" id="tot">—</b></div>
+      <div class="k hrrow" id="hrRow"><span id="lHr"></span><b class="big num" id="hr">—</b></div>
+      <div class="f num" id="formula" hidden></div><div class="f" id="lpHint"></div>
+    </div>
+    <button class="foot side" id="tgtBox">
+      <div class="k"><span id="lTgt"></span><b class="num" id="tgt">—</b></div>
+      <div class="k"><span id="lMp"></span><b class="big num" id="mp">—</b><small class="num" id="mpRaw"></small></div>
+      <div class="f" id="tgtHint"></div>
+    </button>
+  </div>
+
+  <div class="list" id="list"></div>
+  </section>
+  <section id="m2" hidden>
+    <div class="durs" id="durs"></div>
+    <div class="tbox"><div class="time num" id="cd">10:00</div><button class="icon save" id="save2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button></div>
+    <div class="sub" id="sub2"></div>
+    <button class="lap" id="plus"></button>
+    <div class="ctrl3">
+      <button class="btn" id="minus">−1</button>
+      <button class="btn warn" id="downBtn"></button>
+      <button class="btn danger" id="end2"></button>
+    </div>
+    <div class="boxes">
+      <div class="foot">
+        <div class="k"><span id="lCnt"></span><b class="num" id="cntB">—</b></div>
+        <div class="k"><span id="lDt"></span><b class="num" id="dtot">—</b></div>
+        <div class="k"><span id="lNet"></span><b class="num" id="net">—</b></div>
+      </div>
+      <div class="foot side2">
+        <div class="k"><span id="lSpp"></span><b class="big num" id="spp">—</b><small class="num"><span class="hl" id="lHr2"></span> <b class="hv" id="hr2">—</b></small></div>
+        <div class="k sep"><span id="lGross"></span><b class="num" id="gross">—</b><small class="num"><span class="hl" id="lHr3"></span> <b class="hv" id="hr3">—</b></small></div>
+      </div>
+    </div>
+    <h3 class="lh" id="lDl"></h3>
+    <div class="list" id="dlist"></div>
+  </section>
+
+
+</div>
+<div class="mask" id="mask"></div>
+<div class="mask" id="mask2"></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <h2 id="mTitle"></h2>
+  <div class="msum num" id="msum"></div>
+  <label class="fl"><span id="lGrp"></span><input type="text" id="fGrp" autocomplete="off"></label>
+  <label class="fl"><span id="lProc"></span><input type="text" id="fProc" autocomplete="off"></label>
+  <label class="fl"><span id="lOpr"></span><input type="text" id="name" autocomplete="off"></label>
+  <div class="mrow"><button class="btn" id="mCancel"></button><button class="btn pri" id="mOk"></button></div>
+</div>
+<div class="modal" id="cmodal" role="dialog" aria-modal="true" aria-labelledby="cTitle">
+  <h2 id="cTitle"></h2>
+  <div class="msum num" id="cPrev"></div>
+  <label class="fl"><span id="cBaseL"></span><input type="number" id="cBase" inputmode="decimal" min="1" step="1"></label>
+  <label class="fl"><span id="cKL"></span><input type="number" id="cK" inputmode="decimal" min="0.01" step="0.01"></label>
+  <div class="err" id="cErr"></div>
+  <button class="btn" id="cReset" style="width:100%"></button>
+  <div class="mrow"><button class="btn" id="cCancel"></button><button class="btn pri" id="cOk"></button></div>
+</div>
+<div class="modal" id="tmodal" role="dialog" aria-modal="true" aria-labelledby="tTitle">
+  <h2 id="tTitle"></h2>
+  <label class="fl"><span id="tInL"></span><input type="number" id="tIn" inputmode="numeric" min="1" step="1"></label>
+  <div class="err" id="tErr"></div>
+  <div class="mrow"><button class="btn" id="tCancel"></button><button class="btn pri" id="tOk"></button></div>
+</div>
+<div class="dscreen" id="dscreen" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+  <div class="dwrap" id="dwrap">
+    <div class="dhandle" id="dhandle"><h2 id="dTitle"></h2></div>
+    <div class="dtime num" id="dtime">0:00</div>
+    <div class="sub num" id="dremain"></div>
+    <label class="fl"><span id="dNoteL"></span><input type="text" id="dnote" autocomplete="off"></label>
+    <div class="qchips" id="qchips"></div>
+    <button class="lap" id="resume"></button>
+  </div>
+</div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="dhead"><h2 id="lRec"></h2><button class="icon" id="closeH" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div>
+  <div class="dtools">
+    <button class="btn" id="xlsBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="lXls"></span></button>
+    <button class="btn" id="txtBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 8V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h3" fill="none" stroke="currentColor" stroke-width="2"/></svg><span id="lTxt"></span></button>
+    <button class="btn danger" id="delAll"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="lDelAll"></span></button>
+  </div>
+  <div class="dmsg" id="dmsg" role="status"></div>
+  <div id="recs"></div>
+</aside>
+<div class="modal" id="xmodal" role="dialog" aria-modal="true" aria-labelledby="xTitle" style="z-index:51">
+  <h2 id="xTitle"></h2>
+  <div class="msum" id="xNote"></div>
+  <textarea id="xText" readonly></textarea>
+  <div class="mrow"><button class="btn" id="xClose"></button><button class="btn pri" id="xCopy"></button></div>
+</div>
+
+<script>
+{
+const $=id=>document.getElementById(id);
+const KEY='simple_lap_v1', RKEY='simple_lap_records_v1';
+const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}};
+const put=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+let laps=load(KEY,[]), recs=load(RKEY,[]);
+const CKEY='simple_lap_cfg_v1', DEF={base:3600,k:1.2};
+let cfg=Object.assign({},DEF,load(CKEY,{}));
+const TKEY='simple_lap_target_v1';let target=load(TKEY,0);
+let running=false,t0=0,raf=0;
+const L={
+ id:{ttl:'Timer Loop',sw:'中文',start:'Mulai',lap:'Catat 1 Loop',stop:'Berhenti',clear:'Hapus Semua',confirm:'Tekan lagi untuk hapus',
+  idle:'Tekan Mulai untuk menghitung waktu',cont:'Tekan Mulai untuk lanjut',run:n=>'Loop ke-'+n+' sedang dihitung',
+  empty:'Belum ada loop',sec:'sec',pcs:'pcs',cnt:n=>n+' loop',avg:'Avg. sec',tot:'Total sec',avgS:'Avg.',totS:'Total',hr:'Output per jam',
+  fx:'Avg. sec',del:n=>'Hapus loop ke-'+n,
+  name:'Nama proses / operator',save:'Simpan',saveT:'Simpan hasil',cancel:'Batal',langL:'ID',tgtL:'Target pcs/jam',mpL:'Saran operator',orang:'orang',tgtHint:'Ketuk untuk atur target',tgtT:'Atur target',tInL:'Target output (pcs/jam)',tgtSet:'Target disimpan',cfgT:'Atur rumus output',baseL:'Detik per jam (pembilang)',kL:'Faktor (pengali Avg.)',reset:'Kembali ke default (3600 ÷ (Avg. × 1.2))',lp:'Tekan lama untuk atur rumus',bad:'Isi angka lebih dari 0',cfgSaved:'Rumus disimpan',langA:'Ganti bahasa ke 中文',rec:'Riwayat',noRec:'Belum ada catatan. Tekan Simpan setelah selesai mengukur.',
+  saved:'Tersimpan — lihat riwayat di kiri atas',needLoop:'Belum ada loop untuk disimpan',detail:'Lihat detail loop',delRec:'Hapus catatan',
+  delRecQ:'Hapus?',unnamed:'Tanpa nama',perHr:'/jam',
+  tab1:'Loop',tab2:'Hitung output',menit:'menit',start2:n=>'Mulai '+n+' menit',plus:n=>'+1   ('+n+' pcs)',
+  down:'Downtime',end2:'Selesai',end2Q:'Tekan lagi = selesai',reset2:'Ulang',reset2Q:'Tekan lagi = ulang',
+  idle2:'Pilih durasi, lalu tekan Mulai',run2:'Sedang menghitung — tekan +1 tiap 1 pcs selesai',ended2:'Waktu habis / selesai',
+  remain:'Sisa',cntL:'Output (pcs)',dtL:'Total downtime',netL:'Waktu kerja bersih',sppL:'Sec per pcs (tanpa downtime)',grossL:'Sec per pcs (termasuk downtime)',hr2L:'Output/jam',
+  dlL:'Catatan downtime',noDown:'Tidak ada downtime',dTitle:'Downtime — sedang berhenti',dNoteL:'Alasan (bisa ditulis)',dNoteP:'contoh: benang putus',resume:'Lanjut kerja',
+  quick:['Benang putus','Ambil barang','Ganti bobbin','Mesin rusak','Tunggu bahan','Ke toilet','Lainnya'],
+  needCnt:'Belum ada output untuk disimpan',dur:'Durasi',customM:'menit lain',delDown:'Hapus downtime',
+  sum2:(c,d,sp,g)=>c+' pcs · '+d+' · '+sp+' / '+g+' sec/pcs',m2tag:'Hitung',grp:'Grup / Line',xh:{date:'Tanggal',mode:'Mode',n:'Loop / pcs',avg:'Avg. sec / sec tanpa downtime',gross:'Sec termasuk downtime',hr:'Output/jam',hrg:'Output/jam (termasuk downtime)',tot:'Total sec',dt:'Downtime (sec)',tgt:'Target',mp:'Saran operator',det:'Detail'},proc:'Proses',opr:'Nama operator',xls:'Export Excel',txt:'Salin teks',delAll:'Hapus semua',delAllQ:'Tekan lagi = hapus semua',noData:'Belum ada catatan',xlsDone:'File Excel dibuat',copied:'Tersalin — tempel di Excel',txtT:'Teks untuk Excel',txtNote:'Tekan Salin, lalu tempel (paste) di Excel. Kolom dipisah tab.',close:'Tutup',copy:'Salin',allDel:'Semua catatan dihapus',net2:'Tanpa downtime',gross2:'Termasuk downtime'},
+ zh:{ttl:'分段計時',sw:'Bahasa Indonesia',start:'開始',lap:'記一個 Loop',stop:'停止',clear:'全部清除',confirm:'再按一次確認清除',
+  idle:'按開始計時',cont:'按開始繼續計時',run:n=>'第 '+n+' 個 Loop 計時中',
+  empty:'還沒有 Loop',sec:'秒',pcs:'件',cnt:n=>n+' 個',avg:'平均秒數',tot:'總秒數',avgS:'平均',totS:'總計',hr:'小時產量',
+  fx:'平均秒數',del:n=>'刪除第 '+n+' 個 Loop',
+  name:'工段 / 作業員名稱',save:'儲存',saveT:'儲存結果',cancel:'取消',langL:'中',tgtL:'目標件數/時',mpL:'建議人數',orang:'人',tgtHint:'點此設定目標件數',tgtT:'設定目標件數',tInL:'目標件數（件/時）',tgtSet:'目標已儲存',cfgT:'設定產量公式',baseL:'每小時秒數（分子）',kL:'係數（乘在平均秒數）',reset:'恢復預設 3600 ÷ (平均 × 1.2)',lp:'長按設定公式',bad:'請填大於 0 的數字',cfgSaved:'公式已儲存',langA:'切換成印尼文',rec:'過去紀錄',noRec:'還沒有紀錄，量完後按「儲存」。',
+  saved:'已儲存，點左上角查看紀錄',needLoop:'沒有 Loop 可以儲存',detail:'查看 Loop 明細',delRec:'刪除紀錄',
+  delRecQ:'確定刪除?',unnamed:'未命名',perHr:'/時',
+  tab1:'Loop 計時',tab2:'計數產量',menit:'分鐘',start2:n=>'開始 '+n+' 分鐘',plus:n=>'+1   ('+n+' 件)',
+  down:'停機紀錄',end2:'結束',end2Q:'再按一次結束',reset2:'重來',reset2Q:'再按一次重來',
+  idle2:'選擇時間後按開始',run2:'計數中 — 每完成 1 件按 +1',ended2:'時間到 / 已結束',
+  remain:'剩餘',cntL:'實際產量 (件)',dtL:'停機總時間',netL:'實際工作時間',sppL:'單件秒數（扣停機）',grossL:'單件秒數（含停機）',hr2L:'小時產量',
+  dlL:'停機紀錄',noDown:'沒有停機',dTitle:'停機中',dNoteL:'原因（可自行填寫）',dNoteP:'例：斷線',resume:'繼續工作',
+  quick:['斷線','拿東西','換底線','機台故障','等料','上廁所','其他'],
+  needCnt:'還沒有產量可以儲存',dur:'時間',customM:'其他分鐘',delDown:'刪除停機',
+  sum2:(c,d,sp,g)=>c+' 件 · '+d+' · 單件 '+sp+'（含停機 '+g+'）秒',m2tag:'計數',grp:'組別',xh:{date:'日期',mode:'模式',n:'Loop數 / 件數',avg:'平均秒數 / 扣停機單件秒數',gross:'含停機單件秒數',hr:'小時產量',hrg:'小時產量(含停機)',tot:'總秒數',dt:'停機秒數',tgt:'目標件數',mp:'建議人數',det:'明細'},proc:'工段',opr:'車工名字',xls:'匯出 Excel',txt:'複製文字',delAll:'全部刪除',delAllQ:'再按一次全部刪除',noData:'沒有紀錄',xlsDone:'Excel 檔已產生',copied:'已複製，可直接貼到 Excel',txtT:'貼到 Excel 的文字',txtNote:'按「複製」後到 Excel 貼上，欄位用 Tab 分隔。',close:'關閉',copy:'複製',allDel:'已全部刪除',net2:'扣停機',gross2:'含停機'}};
+let lang='id';
+const t=()=>L[lang];
+const f2=x=>x.toFixed(2);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const X='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
+const calc=(a,c=cfg)=>{const tot=a.reduce((x,y)=>x+y,0),avg=tot/a.length;return {tot,avg,hr:avg>0?c.base/(avg*c.k):0}};
+const fxText=(avgTxt,c=cfg)=>c.base+' ÷ ('+avgTxt+' × '+c.k+')';
+
+function tick(){ $('time').textContent=f2((performance.now()-t0)/1000); raf=requestAnimationFrame(tick); }
+function lap(){
+  const now=performance.now();
+  if(!running){running=true;t0=now;tick();}
+  else{laps.push(Math.round((now-t0)/10)/100);t0=now;put(KEY,laps);render();}
+  try{navigator.vibrate&&navigator.vibrate(25)}catch(e){}
+  ui();
+}
+function stop(){running=false;cancelAnimationFrame(raf);$('time').textContent='0.00';ui();}
+function ui(){
+  $('lap').textContent=running?t().lap:t().start;
+  $('stop').disabled=!running;
+  $('sub').textContent=running?t().run(laps.length+1):(laps.length?t().cont:t().idle);
+}
+function renderMp(hr){
+  $('tgt').textContent=target?target+' pcs':'—';
+  if(target&&hr){const raw=target/hr;$('mp').textContent=Math.ceil(raw-1e-9)+' '+t().orang;$('mpRaw').textContent='('+raw.toFixed(2)+')';}
+  else{$('mp').textContent='—';$('mpRaw').textContent='';}
+}
+function render(){
+  $('list').innerHTML=laps.length?laps.map((s,i)=>
+    '<div class="item"><span class="n num">#'+(i+1)+'</span><span class="s num">'+f2(s)+' '+t().sec+'</span>'+
+    '<button class="del" data-i="'+i+'" aria-label="'+t().del(i+1)+'">'+X+'</button></div>'
+  ).reverse().join(''):'<div class="empty">'+t().empty+'</div>';
+  if(laps.length){
+    const {avg,hr,tot}=calc(laps);
+    $('tot').textContent=f2(tot)+' '+t().sec;renderMp(hr);
+    $('avg').textContent=f2(avg)+' '+t().sec;
+    $('hr').textContent=hr?hr.toFixed(1)+' '+t().pcs:'—';
+    $('formula').textContent=fxText(f2(avg))+' = '+(hr?hr.toFixed(1):'—');
+  }else{$('avg').textContent='—';$('tot').textContent='—';renderMp(0);$('hr').textContent='—';$('formula').textContent=fxText(t().fx);}
+}
+function recTitle(r){
+  if(r.grp||r.proc||r.opr) return '<div class="nm">'+esc(r.opr||t().unnamed)+' <span class="who">'+esc([r.grp,r.proc].filter(Boolean).join(' · '))+'</span>';
+  return '<div class="nm">'+esc(r.name||t().unnamed);
+}
+function renderRecs(){
+  const bd=$('badge');bd.textContent=recs.length;bd.classList.toggle('on',recs.length>0);
+  $('recs').innerHTML=recs.length?recs.map((r,i)=>{
+    if(r.type==='count'){
+      const R=r.m2,st=m2stats(R,R.end||Date.now()),c=r.cfg||DEF,hr=st.spp>0?3600/st.spp:0,hrg=st.gross>0?3600/st.gross:0;
+      return '<div class="rec"><div class="rec-h"><div class="info">'+recTitle(r)+'<span class="tagm">'+t().m2tag+'</span></div>'+
+        '<div class="meta num">'+esc(r.date)+' · '+mmss(st.el)+' · '+t().dtL+' '+mmss(st.dt)+'</div>'+
+        '<div class="stat num"><span>'+t().cntL.split(' (')[0]+' <b>'+R.count+'</b> '+t().pcs+'</span></div>'+
+        '<div class="stat num"><span>'+t().net2+' <b>'+f2(st.spp)+'</b> '+t().sec+' → <b>'+(hr?hr.toFixed(1):'—')+'</b>'+t().perHr+'</span></div>'+
+        '<div class="stat num"><span>'+t().gross2+' <b>'+f2(st.gross)+'</b> '+t().sec+' → <b>'+(hrg?hrg.toFixed(1):'—')+'</b>'+t().perHr+'</span></div></div>'+
+        '<div class="out num">'+(hr?hr.toFixed(1):'—')+' '+t().pcs+'<div class="meta">'+t().perHr+'</div></div>'+
+        '<button class="del" data-r="'+i+'" aria-label="'+t().delRec+'">'+X+'</button></div>'+
+        (R.downs.length?'<details><summary>'+t().dlL+' ('+R.downs.length+')</summary><div class="chips num">'+R.downs.map((d,k)=>'<span class="chip">'+mmss(d.e-d.s)+' '+esc(d.note||'—')+'</span>').join('')+'</div></details>':'')+'</div>';
+    }
+    const {avg,hr,tot}=calc(r.laps,r.cfg||DEF);
+    return '<div class="rec"><div class="rec-h"><div class="info">'+recTitle(r)+'</div>'+
+      '<div class="meta num">'+esc(r.date)+' · '+t().cnt(r.laps.length)+(r.target&&hr?' · '+t().tgtL.split(' ')[0]+' '+r.target+' → '+Math.ceil(r.target/hr-1e-9)+' '+t().orang:'')+'</div>'+
+      '<div class="stat num"><span>'+t().avgS+' <b>'+f2(avg)+'</b> '+t().sec+'</span><span>'+t().totS+' <b>'+f2(tot)+'</b> '+t().sec+'</span></div></div>'+
+      '<div class="out num">'+(hr?hr.toFixed(1):'—')+' '+t().pcs+'<div class="meta">'+t().perHr+'</div></div>'+
+      '<button class="del" data-r="'+i+'" aria-label="'+t().delRec+'">'+X+'</button></div>'+
+      '<details><summary>'+t().detail+'</summary><div class="chips num">'+r.laps.map((s,k)=>'<span class="chip">#'+(k+1)+' '+f2(s)+'</span>').join('')+'</div></details></div>';
+  }).join(''):'<div class="empty">'+t().noRec+'</div>';
+}
+function flash(msg){const s=$('sub');s.textContent=msg;setTimeout(ui,1800)}
+
+/* ===== Mode 2: count output ===== */
+const M2KEY='simple_lap_m2_v1';
+const m2blank=()=>({durMin:(M2&&M2.durMin)||10,start:0,end:0,count:0,downs:[],cur:null});
+let M2=null;M2=Object.assign(m2blank(),load(M2KEY,{}));
+let mode=load('simple_lap_mode_v1','m1');
+let raf2=0,actx=null,wake=null;
+const save2=()=>put(M2KEY,M2);
+const mmss=ms=>{ms=Math.max(0,ms);const tsec=Math.floor(ms/1000);return Math.floor(tsec/60)+':'+String(tsec%60).padStart(2,'0')};
+const durMs=()=>M2.durMin*60000;
+const m2run=()=>M2.start&&!M2.end;
+function m2stats(R=M2,now=Date.now()){
+  const endT=R.end||now, el=R.start?Math.min(endT-R.start,R.durMin*60000):0;
+  let dt=R.downs.reduce((a,d)=>a+(d.e-d.s),0); if(R.cur) dt+=Math.max(0,endT-R.cur.s);
+  const net=Math.max(0,el-dt), spp=R.count?net/1000/R.count:0, gross=R.count?el/1000/R.count:0;
+  return {el,dt,net,spp,gross};
+}
+async function wakeOn(){try{if('wakeLock' in navigator&&!wake)wake=await navigator.wakeLock.request('screen')}catch(e){}}
+function wakeOff(){try{wake&&wake.release()}catch(e){};wake=null}
+function beep(){try{if(!actx)return;const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;o.connect(g);g.connect(actx.destination);g.gain.value=.25;o.start();o.stop(actx.currentTime+.6)}catch(e){};try{navigator.vibrate&&navigator.vibrate([200,100,200,100,400])}catch(e){}}
+function finish2(at){
+  if(!m2run())return;
+  M2.end=at||Date.now();
+  if(M2.cur){M2.downs.push({s:M2.cur.s,e:M2.end,note:M2.cur.note||''});M2.cur=null;$('dscreen').classList.remove('on');}
+  save2();cancelAnimationFrame(raf2);wakeOff();beep();render2();
+}
+function tick2(){
+  if(!m2run())return;
+  const now=Date.now();
+  if(now-M2.start>=durMs()){finish2(M2.start+durMs());return}
+  paint2(now);raf2=requestAnimationFrame(tick2);
+}
+function paint2(now=Date.now()){
+  const st=m2stats(M2,now);
+  $('cd').textContent=M2.start?mmss(durMs()-st.el):mmss(durMs());
+  $('cntB').textContent=M2.count;
+  $('dtot').textContent=st.dt?mmss(st.dt):'0:00';
+  $('net').textContent=M2.start?mmss(st.net):'—';
+  $('spp').textContent=M2.count?f2(st.spp)+' '+t().sec:'—';
+  $('gross').textContent=M2.count?f2(st.gross)+' '+t().sec:'—';
+  const hr=st.spp>0?3600/st.spp:0, hrg=st.gross>0?3600/st.gross:0;
+  $('hr2').textContent=hr?hr.toFixed(1)+' '+t().pcs:'—';
+  $('hr3').textContent=hrg?hrg.toFixed(1)+' '+t().pcs:'—';
+  if(M2.cur){$('dtime').textContent=mmss(now-M2.cur.s);$('dremain').textContent=t().remain+' '+mmss(durMs()-st.el);}
+}
+function render2(){
+  const run=m2run(), ended=!!M2.end, idle=!M2.start;
+  $('durs').innerHTML=[5,10,15,30].map(m=>'<button class="dchip num'+(M2.durMin===m?' on':'')+'" data-m="'+m+'"'+(idle?'':' disabled')+'>'+m+'</button>').join('')+
+    '<input type="number" id="dcust" inputmode="numeric" min="1" max="240" aria-label="'+t().customM+'" placeholder="'+t().menit+'" value="'+([5,10,15,30].includes(M2.durMin)?'':M2.durMin)+'"'+(idle?'':' disabled')+'>';
+  $('plus').textContent=idle?t().start2(M2.durMin):(run?t().plus(M2.count):t().ended2);
+  $('plus').disabled=ended;
+  $('minus').disabled=!run||M2.count<1;
+  $('downBtn').disabled=!run;
+  $('end2').disabled=idle; $('end2').textContent=ended?t().reset2:t().end2;
+  $('sub2').textContent=idle?t().idle2:(run?t().run2:t().ended2);
+  const done=M2.downs.map((d,i)=>({d,i}));
+  $('dlist').innerHTML=done.length||M2.cur?done.map(({d,i})=>'<div class="item"><span class="n num">#'+(i+1)+'</span><span class="s num" style="flex:none;font-size:18px">'+mmss(d.e-d.s)+'</span><span class="note">'+esc(d.note||'—')+'</span><button class="del" data-d="'+i+'" aria-label="'+t().delDown+'">'+X+'</button></div>').reverse().join(''):'<div class="empty">'+t().noDown+'</div>';
+  paint2();
+}
+function unlockAudio(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume&&actx.resume()}catch(e){}}
+$('durs').addEventListener('click',e=>{const b=e.target.closest('[data-m]');if(b&&!M2.start){M2.durMin=+b.dataset.m;save2();render2()}});
+$('durs').addEventListener('change',e=>{if(e.target.id==='dcust'&&!M2.start){const v=Math.round(parseFloat(e.target.value));if(v>=1&&v<=240){M2.durMin=v;save2()}render2()}});
+$('plus').onclick=()=>{
+  if(M2.end)return;
+  if(!M2.start){unlockAudio();M2.start=Date.now();save2();wakeOn();render2();tick2();return}
+  M2.count++;save2();try{navigator.vibrate&&navigator.vibrate(25)}catch(e){};render2();
+};
+$('minus').onclick=()=>{if(m2run()&&M2.count>0){M2.count--;save2();render2()}};
+$('downBtn').onclick=()=>{if(!m2run())return;dpos(null);M2.cur={s:Date.now(),note:''};save2();$('dnote').value='';$('dscreen').classList.add('on');paint2()};
+$('resume').onclick=()=>{if(!M2.cur)return;M2.downs.push({s:M2.cur.s,e:Date.now(),note:$('dnote').value.trim()});M2.cur=null;save2();$('dscreen').classList.remove('on');render2()};
+$('dnote').addEventListener('input',()=>{if(M2.cur){M2.cur.note=$('dnote').value;save2()}});
+$('qchips').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;$('dnote').value=b.textContent;if(M2.cur){M2.cur.note=b.textContent;save2()}});
+$('dlist').addEventListener('click',e=>{const b=e.target.closest('[data-d]');if(b){M2.downs.splice(+b.dataset.d,1);save2();render2()}});
+function dpos(p){const w=$('dwrap');if(!p){w.style.left='';w.style.top='';return}w.style.left=p.x+'px';w.style.top=p.y+'px'}
+{let drag=null;const h=$('dhandle'),w=$('dwrap');
+ h.addEventListener('pointerdown',e=>{const r=w.getBoundingClientRect();drag={dx:e.clientX-(r.left+r.width/2),dy:e.clientY-(r.top+r.height/2),hw:r.width/2,hh:r.height/2};try{h.setPointerCapture(e.pointerId)}catch(_){}});
+ h.addEventListener('pointermove',e=>{if(!drag)return;const x=Math.min(innerWidth-drag.hw+20,Math.max(drag.hw-20,e.clientX-drag.dx)),y=Math.min(innerHeight-40,Math.max(drag.hh-20,e.clientY-drag.dy));dpos({x,y})});
+ ['pointerup','pointercancel'].forEach(ev=>h.addEventListener(ev,()=>drag=null));}
+let armed2=false;
+$('end2').onclick=()=>{
+  if(!M2.start)return;
+  if(!armed2){armed2=true;$('end2').textContent=M2.end?t().reset2Q:t().end2Q;setTimeout(()=>{armed2=false;render2()},2500);return}
+  armed2=false;
+  if(M2.end){M2=m2blank();save2();render2()} else finish2();
+};
+function setMode(m){mode=m;put('simple_lap_mode_v1',m);$('m1').hidden=m!=='m1';$('m2').hidden=m!=='m2';$('tab1').classList.toggle('on',m==='m1');$('tab2').classList.toggle('on',m==='m2');$('tab1').setAttribute('aria-selected',m==='m1');$('tab2').setAttribute('aria-selected',m==='m2');if(m==='m2')render2()}
+$('tab1').onclick=()=>setMode('m1');$('tab2').onclick=()=>setMode('m2');
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&m2run()){wakeOn();cancelAnimationFrame(raf2);tick2()}});
+
+/* ===== export ===== */
+function recRows(){
+  const T=t(),H=[T.xh.date,T.xh.mode,T.grp,T.proc,T.opr,T.xh.n,T.xh.avg,T.xh.gross,T.xh.hr,T.xh.hrg,T.xh.tot,T.xh.dt,T.xh.tgt,T.xh.mp,T.xh.det];
+  const p=n=>String(n).padStart(2,'0');
+  const rows=recs.slice().reverse().map(r=>{
+    const dt=r.ts?(d=>d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes()))(new Date(r.ts)):r.date;
+    const g=r.grp||'',pr=r.proc||'',o=r.opr||(r.grp||r.proc?'':(r.name||''));
+    if(r.type==='count'){const R=r.m2,st=m2stats(R,R.end||Date.now());
+      return [dt,T.tab2,g,pr,o,R.count,+f2(st.spp),+f2(st.gross),st.spp?+(3600/st.spp).toFixed(1):'',st.gross?+(3600/st.gross).toFixed(1):'',Math.round(st.el/1000),Math.round(st.dt/1000),'','',R.downs.map(d=>mmss(d.e-d.s)+' '+(d.note||'-')).join('; ')];}
+    const c=calc(r.laps,r.cfg||DEF);
+    return [dt,T.tab1,g,pr,o,r.laps.length,+f2(c.avg),'',c.hr?+c.hr.toFixed(1):'','',+f2(c.tot),'',r.target||'',r.target&&c.hr?Math.ceil(r.target/c.hr-1e-9):'',r.laps.map(f2).join(' ')];
+  });
+  return [H,...rows];
+}
+const crcT=(()=>{const a=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;a[n]=c>>>0}return a})();
+const crc32=u=>{let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=crcT[(c^u[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0};
+function zip(files){
+  const enc=new TextEncoder(),parts=[],cen=[];let off=0;
+  const u16=v=>[v&255,(v>>8)&255],u32=v=>[v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255];
+  for(const [name,txt] of files){
+    const nb=enc.encode(name),db=enc.encode(txt),cr=crc32(db);
+    const lh=new Uint8Array([0x50,0x4b,3,4,...u16(20),...u16(0x800),...u16(0),...u16(0),...u16(0x21),...u32(cr),...u32(db.length),...u32(db.length),...u16(nb.length),...u16(0)]);
+    parts.push(lh,nb,db);
+    cen.push(new Uint8Array([0x50,0x4b,1,2,...u16(20),...u16(20),...u16(0x800),...u16(0),...u16(0),...u16(0x21),...u32(cr),...u32(db.length),...u32(db.length),...u16(nb.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),nb);
+    off+=lh.length+nb.length+db.length;
+  }
+  const cs=cen.reduce((a,b)=>a+b.length,0);
+  const end=new Uint8Array([0x50,0x4b,5,6,...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cs),...u32(off),...u16(0)]);
+  return new Blob([...parts,...cen,end],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function xlsx(rows){
+  const x=v=>String(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,'');
+  const col=i=>{let s='';i++;while(i){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s};
+  const sd=rows.map((r,ri)=>'<row r="'+(ri+1)+'">'+r.map((v,ci)=>{const ref=col(ci)+(ri+1);
+    if(v===''||v==null)return '';
+    if(typeof v==='number'&&isFinite(v))return '<c r="'+ref+'"'+(ri===0?' s="1"':'')+'><v>'+v+'</v></c>';
+    return '<c r="'+ref+'" t="inlineStr"'+(ri===0?' s="1"':'')+'><is><t xml:space="preserve">'+x(v)+'</t></is></c>'}).join('')+'</row>').join('');
+  const widths=[17,14,12,14,16,8,10,10,10,10,10,10,8,8,40];
+  const sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>'+widths.map((w,i)=>'<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>').join('')+'</cols><sheetData>'+sd+'</sheetData></worksheet>';
+  return zip([
+   ['[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
+   ['_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+   ['xl/workbook.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Timer Loop" sheetId="1" r:id="rId1"/></sheets></workbook>'],
+   ['xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+   ['xl/styles.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFDDEBF7"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'],
+   ['xl/worksheets/sheet1.xml',sheet]]);
+}
+let dlNS=null;try{if(window.claude&&typeof window.claude.use==='function')window.claude.use('downloads').then(n=>{dlNS=n}).catch(()=>{})}catch(e){}
+function dmsg(m){$('dmsg').textContent=m;clearTimeout(dmsg._t);dmsg._t=setTimeout(()=>$('dmsg').textContent='',2500)}
+$('xlsBtn').onclick=async()=>{
+  if(!recs.length){dmsg(t().noData);return}
+  const d=new Date(),p=n=>String(n).padStart(2,'0');
+  const fn='TimerLoop_'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+'.xlsx';
+  const blob=xlsx(recRows());
+  if(dlNS){try{await dlNS.save({filename:fn,data:blob});dmsg(t().xlsDone)}catch(e){if(!e||e.code!=='declined')dmsg('Excel: '+((e&&e.code)||'error'))}return}
+  try{const file=new File([blob],fn,{type:blob.type});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:fn});dmsg(t().xlsDone);return}}catch(e){if(e&&e.name==='AbortError')return}
+  try{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);dmsg(t().xlsDone)}catch(e){dmsg('Error')}
+};
+const tsv=()=>recRows().map(r=>r.map(v=>String(v).replace(/[\t\n\r]/g,' ')).join('\t')).join('\n');
+function closeX(){$('xmodal').classList.remove('on')}
+$('txtBtn').onclick=async()=>{
+  if(!recs.length){dmsg(t().noData);return}
+  const txt=tsv();
+  try{await navigator.clipboard.writeText(txt);dmsg(t().copied)}catch(e){}
+  try{if(navigator.share){await navigator.share({title:'Timer Loop',text:txt});return}}catch(e){if(e&&e.name==='AbortError')return}
+  $('xText').value=txt;$('xmodal').classList.add('on');
+};
+$('xClose').onclick=closeX;
+$('xCopy').onclick=async()=>{const ta=$('xText');ta.select();let ok=false;try{await navigator.clipboard.writeText(ta.value);ok=true}catch(e){try{ok=document.execCommand('copy')}catch(_){}}if(ok){dmsg(t().copied);closeX()}};
+let armedAll=false;
+$('delAll').onclick=()=>{
+  if(!recs.length){dmsg(t().noData);return}
+  if(!armedAll){armedAll=true;$('lDelAll').textContent=t().delAllQ;setTimeout(()=>{armedAll=false;$('lDelAll').textContent=t().delAll},2500);return}
+  armedAll=false;recs=[];put(RKEY,recs);renderRecs();$('lDelAll').textContent=t().delAll;dmsg(t().allDel);
+};
+function applyLang(){
+  document.documentElement.lang=lang==='id'?'id':'zh-Hant';
+  $('ttl').textContent=t().ttl;$('lg').textContent=t().langL;$('lang').setAttribute('aria-label',t().langA);
+  $('stop').textContent=t().stop;$('clear').textContent=t().clear;
+  $('lAvg').textContent=t().avg;$('lTgt').textContent=t().tgtL;$('lMp').textContent=t().mpL;$('tgtHint').textContent=t().tgtHint;$('tTitle').textContent=t().tgtT;$('tInL').textContent=t().tInL;$('tCancel').textContent=t().cancel;$('tOk').textContent=t().save;$('lpHint').textContent=t().lp;$('cTitle').textContent=t().cfgT;$('cBaseL').textContent=t().baseL;$('cKL').textContent=t().kL;$('cReset').textContent=t().reset;$('cCancel').textContent=t().cancel;$('cOk').textContent=t().save;$('lTot').textContent=t().tot;$('lHr').textContent=t().hr;
+  $('name').placeholder='';$('lGrp').textContent=t().grp;$('lProc').textContent=t().proc;$('lOpr').textContent=t().opr;
+  $('lXls').textContent=t().xls;$('lTxt').textContent=t().txt;$('lDelAll').textContent=t().delAll;$('xTitle').textContent=t().txtT;$('xNote').textContent=t().txtNote;$('xClose').textContent=t().close;$('xCopy').textContent=t().copy;
+  $('save').setAttribute('aria-label',t().save);$('mTitle').textContent=t().saveT;$('mCancel').textContent=t().cancel;$('mOk').textContent=t().save;$('lRec').textContent=t().rec;
+  $('tab1').textContent=t().tab1;$('tab2').textContent=t().tab2;$('downBtn').textContent=t().down;
+  $('lCnt').textContent=t().cntL;$('lDt').textContent=t().dtL;$('lNet').textContent=t().netL;$('lSpp').textContent=t().sppL;$('lHr2').textContent=t().hr2L;$('lHr3').textContent=t().hr2L;$('lGross').textContent=t().grossL;$('lDl').textContent=t().dlL;
+  $('dTitle').textContent=t().dTitle;$('dNoteL').textContent=t().dNoteL;$('dnote').placeholder=t().dNoteP;$('resume').textContent=t().resume;
+  $('qchips').innerHTML=t().quick.map(q=>'<button>'+esc(q)+'</button>').join('');$('save2').setAttribute('aria-label',t().save);
+  render();renderRecs();ui();render2();
+}
+
+$('lap').onclick=lap;
+$('stop').onclick=stop;
+$('list').onclick=e=>{const b=e.target.closest('.del');if(b){laps.splice(+b.dataset.i,1);put(KEY,laps);render();ui();}};
+let armed=false;
+$('clear').onclick=()=>{
+  if(!laps.length)return;
+  if(!armed){armed=true;$('clear').textContent=t().confirm;setTimeout(()=>{armed=false;$('clear').textContent=t().clear},2500);return}
+  armed=false;laps=[];put(KEY,laps);stop();render();$('clear').textContent=t().clear;
+};
+let saveMode='m1';const LASTK='simple_lap_last_v1';
+function flash2(msg){$('sub2').textContent=msg;setTimeout(render2,1800)}
+function openSave(){
+  saveMode=mode;
+  if(mode==='m2'){
+    if(!M2.count){flash2(t().needCnt);return}
+    const st=m2stats();$('msum').textContent=t().sum2(M2.count,mmss(st.el),f2(st.spp),f2(st.gross));
+  }else{
+  if(!laps.length){flash(t().needLoop);return}
+  const {avg,hr}=calc(laps);
+  $('msum').textContent=t().cnt(laps.length)+' · '+f2(avg)+' '+t().sec+' · '+(hr?hr.toFixed(1):'—')+' '+t().pcs+t().perHr;
+  }
+  const last=load(LASTK,{});$('fGrp').value=last.grp||'';$('fProc').value=last.proc||'';$('name').value='';
+  $('modal').classList.add('on');$('mask2').classList.add('on');setTimeout(()=>$(last.grp?'name':'fGrp').focus(),50);
+}
+function closeSave(){$('modal').classList.remove('on');$('mask2').classList.remove('on');$('name').blur()}
+function doSave(){
+  const d=new Date(),p=n=>String(n).padStart(2,'0');
+  const who={grp:$('fGrp').value.trim(),proc:$('fProc').value.trim(),opr:$('name').value.trim(),ts:d.getTime()};
+  put(LASTK,{grp:who.grp,proc:who.proc});
+  who.name=[who.grp,who.proc,who.opr].filter(Boolean).join(' · ');
+  if(saveMode==='m2'){
+    if(m2run())finish2();
+    const R=JSON.parse(JSON.stringify(M2));
+    recs.unshift({...who,type:'count',date:p(d.getDate())+'/'+p(d.getMonth()+1)+' '+p(d.getHours())+':'+p(d.getMinutes()),m2:R,cfg:Object.assign({},cfg)});
+    put(RKEY,recs);M2=m2blank();save2();$('name').value='';closeSave();render2();renderRecs();flash2(t().saved);return;
+  }
+  recs.unshift({...who,date:p(d.getDate())+'/'+p(d.getMonth()+1)+' '+p(d.getHours())+':'+p(d.getMinutes()),laps:laps.slice(),cfg:Object.assign({},cfg),target:target||0});
+  put(RKEY,recs);
+  laps=[];put(KEY,laps);stop();$('name').value='';closeSave();render();renderRecs();flash(t().saved);
+}
+$('save').onclick=openSave;$('save2').onclick=openSave;$('mCancel').onclick=closeSave;$('mask2').onclick=()=>{closeSave();closeCfg();closeTgt()};$('mOk').onclick=doSave;
+$('name').addEventListener('keydown',e=>{if(e.key==='Enter')doSave()});
+$('fGrp').addEventListener('keydown',e=>{if(e.key==='Enter')$('fProc').focus()});$('fProc').addEventListener('keydown',e=>{if(e.key==='Enter')$('name').focus()});
+function cPreview(){const b=parseFloat($('cBase').value),k=parseFloat($('cK').value);$('cPrev').textContent=(isFinite(b)?b:'?')+' ÷ ('+t().fx+' × '+(isFinite(k)?k:'?')+')'}
+function openCfg(){$('cBase').value=cfg.base;$('cK').value=cfg.k;$('cErr').textContent='';cPreview();$('cmodal').classList.add('on');$('mask2').classList.add('on')}
+function closeCfg(){$('cmodal').classList.remove('on');$('mask2').classList.remove('on')}
+$('cBase').oninput=cPreview;$('cK').oninput=cPreview;
+$('cReset').onclick=()=>{$('cBase').value=DEF.base;$('cK').value=DEF.k;$('cErr').textContent='';cPreview()};
+$('cCancel').onclick=closeCfg;
+$('cOk').onclick=()=>{const b=parseFloat($('cBase').value),k=parseFloat($('cK').value);
+  if(!(b>0)||!(k>0)){$('cErr').textContent=t().bad;return}
+  cfg={base:b,k:k};put(CKEY,cfg);closeCfg();render();render2();flash(t().cfgSaved)};
+let lpT=0;const hrRow=$('hrRow');
+const lpStart=e=>{hrRow.classList.add('press');lpT=setTimeout(()=>{hrRow.classList.remove('press');try{navigator.vibrate&&navigator.vibrate(40)}catch(_){};openCfg()},600)};
+const lpEnd=()=>{clearTimeout(lpT);hrRow.classList.remove('press')};
+hrRow.addEventListener('pointerdown',lpStart);['pointerup','pointerleave','pointercancel'].forEach(ev=>hrRow.addEventListener(ev,lpEnd));
+hrRow.addEventListener('contextmenu',e=>e.preventDefault());
+function openTgt(){$('tIn').value=target||'';$('tErr').textContent='';$('tmodal').classList.add('on');$('mask2').classList.add('on');setTimeout(()=>$('tIn').focus(),50)}
+function closeTgt(){$('tmodal').classList.remove('on');$('mask2').classList.remove('on');$('tIn').blur()}
+function okTgt(){const v=parseFloat($('tIn').value);if(!(v>0)){$('tErr').textContent=t().bad;return}target=Math.round(v*10)/10;put(TKEY,target);closeTgt();render();flash(t().tgtSet)}
+$('tgtBox').onclick=openTgt;$('tCancel').onclick=closeTgt;$('tOk').onclick=okTgt;
+$('tIn').addEventListener('keydown',e=>{if(e.key==='Enter')okTgt()});
+let armedRec=-1,armTimer=0;
+$('recs').onclick=e=>{
+  const b=e.target.closest('[data-r]');if(!b)return;
+  const i=+b.dataset.r;
+  if(armedRec!==i){renderRecs();armedRec=i;const nb=$('recs').querySelector('[data-r="'+i+'"]');nb.textContent=t().delRecQ;nb.style.width='auto';nb.style.padding='0 10px';nb.style.fontSize='14px';nb.style.fontWeight='700';clearTimeout(armTimer);armTimer=setTimeout(()=>{armedRec=-1;renderRecs()},2500);return}
+  armedRec=-1;recs.splice(i,1);put(RKEY,recs);renderRecs();
+};
+const d0=()=>['modal','cmodal','tmodal','xmodal'].some(id=>$(id).classList.contains('on'));
+function openH(){$('drawer').classList.add('on');$('mask').classList.add('on');$('drawer').setAttribute('aria-hidden','false');$('closeH').focus()}
+function closeH(){$('drawer').classList.remove('on');$('mask').classList.remove('on');$('drawer').setAttribute('aria-hidden','true')}
+$('openH').onclick=openH;$('closeH').onclick=closeH;$('mask').onclick=closeH;
+let sx=0,sy=0,st=0;
+document.addEventListener('touchstart',e=>{const p=e.touches[0];sx=p.clientX;sy=p.clientY;st=Date.now()},{passive:true});
+document.addEventListener('touchend',e=>{const p=e.changedTouches[0],dx=p.clientX-sx,dy=p.clientY-sy;
+  if(Math.abs(dx)<70||Math.abs(dy)>Math.abs(dx)*0.6||Date.now()-st>800)return;
+  if(d0()||$('dscreen').classList.contains('on'))return;
+  const on=$('drawer').classList.contains('on');
+  if(dx>0&&!on)openH(); else if(dx<0&&on)closeH();
+},{passive:true});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeX();closeH();closeSave();closeCfg();closeTgt()}});
+$('lang').onclick=()=>{lang=lang==='id'?'zh':'id';applyLang()};
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/BUTTON|INPUT/.test(e.target.tagName)&&!$('drawer').classList.contains('on')&&!d0()){e.preventDefault();if(mode==='m2'){if(!$('dscreen').classList.contains('on'))$('plus').click()}else lap()}});
+applyLang();setMode(mode);
+if(M2.cur)$('dscreen').classList.add('on');
+if(m2run()){wakeOn();tick2()}
+}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
+</script>
+</body>
+</html>
