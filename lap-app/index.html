@@ -675,12 +675,19 @@ function endDrag(){
   render();ui();
 }
 const listEl=$('list');
-listEl.addEventListener('touchstart',e=>{const c=e.target.closest('.cell[data-r]');if(!c||e.touches.length>1)return;const p=e.touches[0];lpPt=[p.clientX,p.clientY];clearTimeout(lpT2);lpT2=setTimeout(()=>startDrag(c,lpPt[0],lpPt[1]),420)},{passive:true});
-document.addEventListener('touchmove',e=>{const p=e.touches[0];
-  if(drag){e.preventDefault();dragMove(p.clientX,p.clientY);return}
-  if(lpPt&&Math.hypot(p.clientX-lpPt[0],p.clientY-lpPt[1])>10){clearTimeout(lpT2);lpPt=null}},{passive:false});
-document.addEventListener('touchend',()=>{clearTimeout(lpT2);lpPt=null;if(drag)endDrag()});
-document.addEventListener('touchcancel',()=>{clearTimeout(lpT2);lpPt=null;if(drag){drag.tgt=null;endDrag()}});
+/* touch: listeners bound to the touched element itself, so they keep firing even after the list re-renders */
+listEl.addEventListener('touchstart',e=>{
+  const c=e.target.closest('.cell[data-r]');if(!c||e.touches.length>1)return;
+  const el=e.target,p=e.touches[0];lpPt=[p.clientX,p.clientY];clearTimeout(lpT2);
+  lpT2=setTimeout(()=>startDrag(c,lpPt[0],lpPt[1]),420);
+  const tm=ev=>{const q=ev.touches[0];if(!q)return;
+    if(drag){ev.preventDefault();dragMove(q.clientX,q.clientY);return}
+    if(lpPt&&Math.hypot(q.clientX-lpPt[0],q.clientY-lpPt[1])>10){clearTimeout(lpT2);lpPt=null}};
+  const done=cancel=>()=>{clearTimeout(lpT2);lpPt=null;el.removeEventListener('touchmove',tm);el.removeEventListener('touchend',te);el.removeEventListener('touchcancel',tc);if(drag){if(cancel)drag.tgt=null;endDrag()}};
+  const te=done(false),tc=done(true);
+  el.addEventListener('touchmove',tm,{passive:false});el.addEventListener('touchend',te);el.addEventListener('touchcancel',tc);
+},{passive:true});
+document.addEventListener('contextmenu',e=>{if(drag||lpPt)e.preventDefault()});
 listEl.addEventListener('mousedown',e=>{const c=e.target.closest('.cell[data-r]');if(!c)return;lpPt=[e.clientX,e.clientY];clearTimeout(lpT2);lpT2=setTimeout(()=>startDrag(c,lpPt[0],lpPt[1]),420)});
 document.addEventListener('mousemove',e=>{if(drag){dragMove(e.clientX,e.clientY);return}if(lpPt&&Math.hypot(e.clientX-lpPt[0],e.clientY-lpPt[1])>6){clearTimeout(lpT2);lpPt=null}});
 document.addEventListener('mouseup',()=>{clearTimeout(lpT2);lpPt=null;if(drag)endDrag()});
