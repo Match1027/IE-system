@@ -167,6 +167,14 @@ body.dragging .gscroll{overflow:hidden;touch-action:none}
 .hl2{text-align:right;font-size:13px;font-weight:700;color:var(--primary);padding:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .qchips button.on{background:var(--primary);color:var(--on);border-color:var(--primary)}
 .mrow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px}
+.colbtns{display:none;gap:6px;margin-top:8px}
+.colbtns.on{display:grid}
+.colbtns .cb{min-height:56px;padding:0 4px;font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.colbtns .cb.nx{border-color:var(--primary);color:var(--primary);border-width:2px}
+.addc{width:40px;height:40px;border-radius:10px;border:1px dashed var(--primary);background:none;color:var(--primary);font-size:20px;font-weight:700}
+.addc.wide{width:auto;padding:0 14px;margin-left:8px;font-size:15px}
+.acell.ov span{color:var(--warn)}
+.acell.ov small::before{content:"✎ "}
 </style>
 </head>
 <body>
@@ -177,6 +185,7 @@ body.dragging .gscroll{overflow:hidden;touch-action:none}
   <div class="tbox"><div class="time num" id="time">0.00</div><button class="icon save" id="save"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button></div>
   <div class="sub" id="sub"></div>
   <button class="lap" id="lap"></button>
+  <div class="colbtns" id="colBtns"></div>
   <div class="ctrl">
     <button class="btn" id="stop" disabled></button>
     <button class="btn danger" id="clear"></button>
@@ -232,6 +241,8 @@ body.dragging .gscroll{overflow:hidden;touch-action:none}
   <h2 id="lbTitle"></h2>
   <div class="qchips" id="lbChips"></div>
   <label class="fl"><span id="lbInL"></span><input type="text" id="lbIn" autocomplete="off"></label>
+  <label class="fl"><span id="lbSecL"></span><input type="number" id="lbSec" inputmode="decimal" min="0" step="0.01"></label>
+  <div class="err" id="lbErr"></div>
   <div class="mrow3"><button class="btn danger" id="lbClear"></button><button class="btn" id="lbCancel"></button><button class="btn pri" id="lbOk"></button></div>
 </div>
 <div class="mask" id="mask2"></div>
@@ -296,7 +307,8 @@ const put=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const normRows=a=>(a||[]).map(x=>Array.isArray(x)?x:[x]);
 const trimRow=r=>{while(r.length&&r[r.length-1]==null)r.pop();return r};
 let laps=normRows(load(KEY,[])), recs=load(RKEY,[]);
-const LKEY='simple_lap_cols_v1';let colLab=load(LKEY,[]);
+const LKEY='simple_lap_cols_v1',OVKEY='simple_lap_colov_v1';let colLab=load(LKEY,[]),colOv=load(OVKEY,[]);
+const curCols=()=>Math.max(1,calc(laps,cfg,colOv).cols,colLab.length);
 function labText(v){if(!v)return v;for(const k in L){const i=L[k].presets.indexOf(v);if(i>=0)return t().presets[i]}return v}
 const CKEY='simple_lap_cfg_v1', DEF={base:3600,k:1.2};
 let cfg=Object.assign({},DEF,load(CKEY,{}));
@@ -317,7 +329,7 @@ const L={
   dlL:'Catatan downtime',noDown:'Tidak ada downtime',dTitle:'Downtime — sedang berhenti',dNoteL:'Alasan (bisa ditulis)',dNoteP:'contoh: benang putus',resume:'Lanjut kerja',
   quick:['Benang putus','Ambil barang','Ganti bobbin','Mesin rusak','Tunggu bahan','Ke toilet','Lainnya'],
   needCnt:'Belum ada output untuk disimpan',dur:'Durasi',customM:'menit lain',delDown:'Hapus downtime',
-  sum2:(c,d,sp,g)=>c+' pcs · '+d+' · '+sp+' / '+g+' sec/pcs',m2tag:'Hitung',dzNew:'Baris baru',dzDel:'Hapus',presets:['Merapikan','Menunggu','Mengambil','Menjahit','Potong benang'],labT:n=>'Kolom '+n+' — waktu untuk apa?',labIn:'Atau tulis sendiri',clearL:'Kosongkan',colN:n=>'Kolom '+n,totCol:'Total',shSum:'Ringkasan',shDet:'Detail loop',grp:'Pabrik / Line',newOpt:'Baru — akan disimpan',xh:{date:'Tanggal',mode:'Mode',n:'Loop / pcs',avg:'Avg. sec / sec tanpa downtime',gross:'Sec termasuk downtime',hr:'Output/jam',hrg:'Output/jam (termasuk downtime)',tot:'Total sec',dt:'Downtime (sec)',tgt:'Target',mp:'Saran operator',det:'Detail'},proc:'Proses',opr:'Nama operator',xls:'Export Excel',txt:'Salin teks',delAll:'Hapus semua',delAllQ:'Tekan lagi = hapus semua',noData:'Belum ada catatan',xlsDone:'File Excel dibuat',copied:'Tersalin — tempel di Excel',txtT:'Teks untuk Excel',txtNote:'Tekan Salin, lalu tempel (paste) di Excel. Kolom dipisah tab.',close:'Tutup',copy:'Salin',allDel:'Semua catatan dihapus',net2:'Tanpa downtime',gross2:'Termasuk downtime'},
+  sum2:(c,d,sp,g)=>c+' pcs · '+d+' · '+sp+' / '+g+' sec/pcs',m2tag:'Hitung',dzNew:'Baris baru',dzDel:'Hapus',presets:['Merapikan','Menunggu','Mengambil','Menjahit','Potong benang'],labT:n=>'Kolom '+n+' — waktu untuk apa?',labIn:'Atau tulis sendiri',addCol:'Kolom',secL:'Avg. sec (isi langsung, kosong = otomatis)',autoL:'otomatis',clearL:'Kosongkan',colN:n=>'Kolom '+n,totCol:'Total',shSum:'Ringkasan',shDet:'Detail loop',grp:'Pabrik / Line',newOpt:'Baru — akan disimpan',xh:{date:'Tanggal',mode:'Mode',n:'Loop / pcs',avg:'Avg. sec / sec tanpa downtime',gross:'Sec termasuk downtime',hr:'Output/jam',hrg:'Output/jam (termasuk downtime)',tot:'Total sec',dt:'Downtime (sec)',tgt:'Target',mp:'Saran operator',det:'Detail'},proc:'Proses',opr:'Nama operator',xls:'Export Excel',txt:'Salin teks',delAll:'Hapus semua',delAllQ:'Tekan lagi = hapus semua',noData:'Belum ada catatan',xlsDone:'File Excel dibuat',copied:'Tersalin — tempel di Excel',txtT:'Teks untuk Excel',txtNote:'Tekan Salin, lalu tempel (paste) di Excel. Kolom dipisah tab.',close:'Tutup',copy:'Salin',allDel:'Semua catatan dihapus',net2:'Tanpa downtime',gross2:'Termasuk downtime'},
  zh:{ttl:'分段計時',sw:'Bahasa Indonesia',start:'開始',lap:'記一個 Loop',stop:'停止',clear:'全部清除',confirm:'再按一次確認清除',
   idle:'按開始計時',cont:'按開始繼續計時',run:n=>'第 '+n+' 個 Loop 計時中',
   empty:'還沒有 Loop',sec:'秒',pcs:'件',cnt:n=>n+' 個',avg:'平均秒數',tot:'總秒數',avgS:'平均',totS:'總計',hr:'小時產量',
@@ -332,29 +344,45 @@ const L={
   dlL:'停機紀錄',noDown:'沒有停機',dTitle:'停機中',dNoteL:'原因（可自行填寫）',dNoteP:'例：斷線',resume:'繼續工作',
   quick:['斷線','拿東西','換底線','機台故障','等料','上廁所','其他'],
   needCnt:'還沒有產量可以儲存',dur:'時間',customM:'其他分鐘',delDown:'刪除停機',
-  sum2:(c,d,sp,g)=>c+' 件 · '+d+' · 單件 '+sp+'（含停機 '+g+'）秒',m2tag:'計數',dzNew:'新的一列',dzDel:'刪除',presets:['整理','等待','拿取','車縫','剪線'],labT:n=>'第 '+n+' 欄是什麼時間？',labIn:'或自行輸入',clearL:'清除',colN:n=>'第'+n+'欄',totCol:'合計',shSum:'總表',shDet:'Loop 明細',grp:'廠別 / 組別',newOpt:'新項目，儲存後會記住',xh:{date:'日期',mode:'模式',n:'Loop數 / 件數',avg:'平均秒數 / 扣停機單件秒數',gross:'含停機單件秒數',hr:'小時產量',hrg:'小時產量(含停機)',tot:'總秒數',dt:'停機秒數',tgt:'目標件數',mp:'建議人數',det:'明細'},proc:'工段',opr:'車工名字',xls:'匯出 Excel',txt:'複製文字',delAll:'全部刪除',delAllQ:'再按一次全部刪除',noData:'沒有紀錄',xlsDone:'Excel 檔已產生',copied:'已複製，可直接貼到 Excel',txtT:'貼到 Excel 的文字',txtNote:'按「複製」後到 Excel 貼上，欄位用 Tab 分隔。',close:'關閉',copy:'複製',allDel:'已全部刪除',net2:'扣停機',gross2:'含停機'}};
+  sum2:(c,d,sp,g)=>c+' 件 · '+d+' · 單件 '+sp+'（含停機 '+g+'）秒',m2tag:'計數',dzNew:'新的一列',dzDel:'刪除',presets:['整理','等待','拿取','車縫','剪線'],labT:n=>'第 '+n+' 欄是什麼時間？',labIn:'或自行輸入',addCol:'欄位',secL:'平均秒數（直接輸入，空白＝自動計算）',autoL:'自動',clearL:'清除',colN:n=>'第'+n+'欄',totCol:'合計',shSum:'總表',shDet:'Loop 明細',grp:'廠別 / 組別',newOpt:'新項目，儲存後會記住',xh:{date:'日期',mode:'模式',n:'Loop數 / 件數',avg:'平均秒數 / 扣停機單件秒數',gross:'含停機單件秒數',hr:'小時產量',hrg:'小時產量(含停機)',tot:'總秒數',dt:'停機秒數',tgt:'目標件數',mp:'建議人數',det:'明細'},proc:'工段',opr:'車工名字',xls:'匯出 Excel',txt:'複製文字',delAll:'全部刪除',delAllQ:'再按一次全部刪除',noData:'沒有紀錄',xlsDone:'Excel 檔已產生',copied:'已複製，可直接貼到 Excel',txtT:'貼到 Excel 的文字',txtNote:'按「複製」後到 Excel 貼上，欄位用 Tab 分隔。',close:'關閉',copy:'複製',allDel:'已全部刪除',net2:'扣停機',gross2:'含停機'}};
 let lang='id';
 const t=()=>L[lang];
 const f2=x=>x.toFixed(2);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const X='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
-const calc=(a,c=cfg)=>{const rows=normRows(a),cols=rows.reduce((m,r)=>Math.max(m,r.length),0);
-  const colAvg=Array.from({length:cols},(_,j)=>{const v=rows.map(r=>r[j]).filter(x=>x!=null);return v.length?v.reduce((x,y)=>x+y,0)/v.length:0});
+const calc=(a,c=cfg,ov=null)=>{const rows=normRows(a);ov=ov||[];
+  const cols=Math.max(rows.reduce((m,r)=>Math.max(m,r.length),0),ov.reduce((m,v,j)=>v!=null?j+1:m,0));
+  const colAvg=Array.from({length:cols},(_,j)=>{if(ov[j]!=null)return ov[j];const v=rows.map(r=>r[j]).filter(x=>x!=null);return v.length?v.reduce((x,y)=>x+y,0)/v.length:0});
   const tot=rows.reduce((a2,r)=>a2+r.reduce((x,y)=>x+(y||0),0),0),avg=colAvg.reduce((x,y)=>x+y,0);
   return {tot,avg,colAvg,cols,hr:avg>0?c.base/(avg*c.k):0}};
 const fxText=(avgTxt,c=cfg)=>c.base+' ÷ ('+avgTxt+' × '+c.k+')';
 
 function tick(){ $('time').textContent=f2((performance.now()-t0)/1000); raf=requestAnimationFrame(tick); }
-function lap(){
+function lap(col){
   const now=performance.now();
   if(!running){running=true;t0=now;tick();}
-  else{laps.push([Math.round((now-t0)/10)/100]);t0=now;put(KEY,laps);render();}
+  else{
+    const v=Math.round((now-t0)/10)/100;t0=now;
+    const cols=curCols(),last=laps[laps.length-1];
+    if(col==null){
+      if(cols>1&&last){let k=last.findIndex((x,i)=>x==null&&i<cols);if(k<0&&last.length<cols)k=last.length;if(k>=0&&k<cols){while(last.length<k)last.push(null);last[k]=v}else laps.push([v])}
+      else laps.push([v]);
+    }else{
+      if(last&&last[col]==null&&last.length<=cols&&!(last.slice(col+1).some(x=>x!=null))){while(last.length<col)last.push(null);last[col]=v}
+      else{const r=[];while(r.length<col)r.push(null);r.push(v);laps.push(r)}
+    }
+    put(KEY,laps);render();
+  }
   try{navigator.vibrate&&navigator.vibrate(25)}catch(e){}
   ui();
 }
 function stop(){running=false;cancelAnimationFrame(raf);$('time').textContent='0.00';ui();}
 function ui(){
   $('lap').textContent=running?t().lap:t().start;
+  const nc=curCols();$('colBtns').classList.toggle('on',running&&nc>1);
+  if(running&&nc>1){const last=laps[laps.length-1];let nx=0;if(last){nx=last.findIndex((x,i)=>x==null&&i<nc);if(nx<0)nx=last.length<nc?last.length:0}
+    $('colBtns').style.gridTemplateColumns='repeat('+nc+',minmax(0,1fr))';
+    $('colBtns').innerHTML=Array.from({length:nc},(_,j)=>'<button type="button" class="btn cb'+(j===nx?' nx':'')+'" data-col="'+j+'">'+esc(colName(colLab,j))+'</button>').join('')}
   $('stop').disabled=!running;
   $('sub').textContent=running?t().run(laps.length+1):(laps.length?t().cont:t().idle);
 }
@@ -364,7 +392,7 @@ function renderMp(hr){
   else{$('mp').textContent='—';$('mpRaw').textContent='';}
 }
 function gridHTML(rows,cols,dg){
-  const C=calc(rows),gt='grid-template-columns:2.4em repeat('+cols+',minmax(52px,1fr))'+(cols>1?' minmax(56px,auto)':'')+' 44px';
+  const C=calc(rows,cfg,colOv),gt='grid-template-columns:2.4em repeat('+cols+',minmax(52px,1fr))'+(cols>1?' minmax(56px,auto)':'')+' 44px';
   const hasLab=colLab.slice(0,cols).some(Boolean);
   return '<div class="gscroll"><div class="gtab">'+(hasLab?'<div class="grow2 ghead" style="'+gt+'"><span></span>'+Array.from({length:cols},(_,j)=>'<span class="hl2">'+esc(labText(colLab[j])||'')+'</span>').join('')+(cols>1?'<span class="rs">'+t().totCol+'</span>':'')+'<span></span></div>':'')+rows.map((r,i)=>
     '<div class="grow2" data-row="'+i+'" style="'+gt+'"><span class="n num">#'+(i+1)+'</span>'+
@@ -372,12 +400,12 @@ function gridHTML(rows,cols,dg){
       return '<span class="cell num'+(r[j]==null?' emp':'')+(g?' ghost':'')+'" data-r="'+i+'" data-j="'+j+'">'+(r[j]==null?'':f2(r[j]))+'</span>'}).join('')+
     (cols>1?'<span class="rs num">'+f2(r.reduce((x,y)=>x+(y||0),0))+'</span>':'')+
     (dg?'<span></span>':'<button class="del" data-i="'+i+'" aria-label="'+t().del(i+1)+'">'+X+'</button>')+'</div>').join('')+
-    '<div class="grow2 gavg" style="'+gt+'"><span class="n">'+t().avgS+'</span>'+Array.from({length:cols},(_,j)=>'<button type="button" class="cell acell num" data-ac="'+j+'"'+(dg?' disabled':'')+'><span>'+(C.colAvg[j]!=null&&j<C.cols?f2(C.colAvg[j]):'')+'</span><small>'+(colLab[j]?esc(labText(colLab[j])):'✎')+'</small></button>').join('')+
-    (cols>1?'<span class="rs num">'+f2(C.avg)+'</span>':'')+'<span></span></div></div></div>';
+    '<div class="grow2 gavg" style="'+gt+'"><span class="n">'+t().avgS+'</span>'+Array.from({length:cols},(_,j)=>'<button type="button" class="cell acell num'+(colOv[j]!=null?' ov':'')+'" data-ac="'+j+'"'+(dg?' disabled':'')+'><span>'+(C.colAvg[j]!=null&&j<C.cols?f2(C.colAvg[j]):'')+'</span><small>'+(colLab[j]?esc(labText(colLab[j])):'✎')+'</small></button>').join('')+
+    (cols>1?'<span class="rs num">'+f2(C.avg)+'</span>':'')+(dg?'<span></span>':'<button type="button" class="addc" data-ac="'+cols+'" aria-label="'+t().addCol+'">＋</button>')+'</div></div></div>';
 }
 function render(){
-  const C=calc(laps);
-  $('list').innerHTML=laps.length?gridHTML(laps,Math.max(1,C.cols),null):'<div class="empty">'+t().empty+'</div>';
+  const C=calc(laps,cfg,colOv);
+  $('list').innerHTML=laps.length||colOv.some(v=>v!=null)||colLab.length?gridHTML(laps,curCols(),null):'<div class="empty">'+t().empty+' <button type="button" class="addc wide" data-ac="0">＋ '+t().addCol+'</button></div>';
   if(laps.length){
     const {avg,hr,tot}=C;
     $('tot').textContent=f2(tot)+' '+t().sec;renderMp(hr);
@@ -404,13 +432,13 @@ function renderRecs(){
         '<button class="del" data-r="'+i+'" aria-label="'+t().delRec+'">'+X+'</button></div>'+
         (R.downs.length?'<details><summary>'+t().dlL+' ('+R.downs.length+')</summary><div class="chips num">'+R.downs.map((d,k)=>'<span class="chip">'+mmss(d.e-d.s)+' '+esc(d.note||'—')+'</span>').join('')+'</div></details>':'')+'</div>';
     }
-    const {avg,hr,tot}=calc(r.laps,r.cfg||DEF);
+    const {avg,hr,tot}=calc(r.laps,r.cfg||DEF,r.ov);
     return '<div class="rec"><div class="rec-h"><div class="info">'+recTitle(r)+'</div>'+
       '<div class="meta num">'+esc(r.date)+' · '+t().cnt(r.laps.length)+(r.target&&hr?' · '+t().tgtL.split(' ')[0]+' '+r.target+' → '+Math.ceil(r.target/hr-1e-9)+' '+t().orang:'')+'</div>'+
       '<div class="stat num"><span>'+t().avgS+' <b>'+f2(avg)+'</b> '+t().sec+'</span><span>'+t().totS+' <b>'+f2(tot)+'</b> '+t().sec+'</span></div></div>'+
       '<div class="out num">'+(hr?hr.toFixed(1):'—')+' '+t().pcs+'<div class="meta">'+t().perHr+'</div></div>'+
       '<button class="del" data-r="'+i+'" aria-label="'+t().delRec+'">'+X+'</button></div>'+
-      '<div class="stat num">'+calc(r.laps,r.cfg||DEF).colAvg.map((v,j)=>'<span>'+esc(colName(r.cols,j))+' <b>'+f2(v)+'</b></span>').join('')+'</div>'+
+      '<div class="stat num">'+calc(r.laps,r.cfg||DEF,r.ov).colAvg.map((v,j)=>'<span>'+esc(colName(r.cols,j))+' <b>'+f2(v)+'</b></span>').join('')+'</div>'+
       '<details><summary>'+t().detail+'</summary><div class="chips num">'+normRows(r.laps).map((s,k)=>'<span class="chip">#'+(k+1)+' '+s.map(v=>v==null?'–':f2(v)).join(' | ')+'</span>').join('')+'</div></details></div>';
   }).join(''):'<div class="empty">'+t().noRec+'</div>';
 }
@@ -519,7 +547,7 @@ function recRows(){
     const g=[r.fac,r.grp].filter(Boolean).join(' '),pr=r.proc||'',o=r.opr||(r.grp||r.proc?'':(r.name||''));
     if(r.type==='count'){const R=r.m2,st=m2stats(R,R.end||Date.now());
       return [dt,T.tab2,g,pr,o,R.count,+f2(st.spp),+f2(st.gross),st.spp?+(3600/st.spp).toFixed(1):'',st.gross?+(3600/st.gross).toFixed(1):'',Math.round(st.el/1000),Math.round(st.dt/1000),'','',R.downs.map(d=>mmss(d.e-d.s)+' '+(d.note||'-')).join('; ')];}
-    const c=calc(r.laps,r.cfg||DEF);
+    const c=calc(r.laps,r.cfg||DEF,r.ov);
     return [dt,T.tab1,g,pr,o,r.laps.length,+f2(c.avg),'',c.hr?+c.hr.toFixed(1):'','',+f2(c.tot),'',r.target||'',r.target&&c.hr?Math.ceil(r.target/c.hr-1e-9):'',c.colAvg.map((v,j)=>colName(r.cols,j)+' '+f2(v)).join(' / ')];
   });
   return [H,...rows];
@@ -562,7 +590,7 @@ const colName=(labs,j)=>(labs&&labs[j]&&labText(labs[j]))||t().colN(j+1);
 function detailRows(){
   const T=t(),out=[],bold=new Set(),p=n=>String(n).padStart(2,'0');
   recs.slice().reverse().filter(r=>r.type!=='count').forEach(r=>{
-    const rows=normRows(r.laps),C=calc(rows,r.cfg||DEF),labs=r.cols||[];
+    const rows=normRows(r.laps),C=calc(rows,r.cfg||DEF,r.ov),labs=r.cols||[];
     const dt=r.ts?(d=>d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes()))(new Date(r.ts)):r.date;
     bold.add(out.length);out.push([dt,[r.fac,r.grp].filter(Boolean).join(' '),r.proc||'',r.opr||r.name||'']);
     bold.add(out.length);out.push(['#',...Array.from({length:C.cols},(_,j)=>colName(labs,j)),T.totCol]);
@@ -609,7 +637,7 @@ function applyLang(){
   $('name').placeholder='';$('lGrp').textContent=t().grp;$('lProc').textContent=t().proc;$('lOpr').textContent=t().opr;
   $('lXls').textContent=t().xls;$('lTxt').textContent=t().txt;$('lDelAll').textContent=t().delAll;$('xTitle').textContent=t().txtT;$('xNote').textContent=t().txtNote;$('xClose').textContent=t().close;$('xCopy').textContent=t().copy;
   $('save').setAttribute('aria-label',t().save);$('mTitle').textContent=t().saveT;$('mCancel').textContent=t().cancel;$('mOk').textContent=t().save;$('lRec').textContent=t().rec;
-  $('lbInL').textContent=t().labIn;$('lbClear').textContent=t().clearL;$('lbCancel').textContent=t().cancel;$('lbOk').textContent=t().save;
+  $('lbInL').textContent=t().labIn;$('lbSecL').textContent=t().secL;$('lbClear').textContent=t().clearL;$('lbCancel').textContent=t().cancel;$('lbOk').textContent=t().save;
   $('dzNew').textContent=t().dzNew;$('dzDel').textContent=t().dzDel;
   $('tab1').textContent=t().tab1;$('tab2').textContent=t().tab2;$('downBtn').textContent=t().down;
   $('lCnt').textContent=t().cntL;$('lDt').textContent=t().dtL;$('lNet').textContent=t().netL;$('lSpp').textContent=t().sppL;$('lHr2').textContent=t().hr2L;$('lHr3').textContent=t().hr2L;$('lGross').textContent=t().grossL;$('lDl').textContent=t().dlL;
@@ -618,9 +646,10 @@ function applyLang(){
   render();renderRecs();ui();render2();
 }
 
-$('lap').onclick=lap;
+$('lap').onclick=()=>lap();
+$('colBtns').addEventListener('click',e=>{const b=e.target.closest('[data-col]');if(b)lap(+b.dataset.col)});
 $('stop').onclick=stop;
-$('list').onclick=e=>{const ac=e.target.closest('.acell');if(ac&&!drag){openLab(+ac.dataset.ac);return}
+$('list').onclick=e=>{const ac=e.target.closest('.acell,.addc');if(ac&&!drag){openLab(+ac.dataset.ac);return}
   const b=e.target.closest('.del');if(b){laps.splice(+b.dataset.i,1);put(KEY,laps);render();ui();return}
 };
 /* ---- drag & drop cells ---- */
@@ -647,7 +676,7 @@ function paintDrag(){
 }
 function startDrag(cell,x,y){
   const r=+cell.dataset.r,j=+cell.dataset.j;if(laps[r]==null||laps[r][j]==null)return;
-  drag={src:{r,j},v:laps[r][j],tgt:null,cols:Math.max(1,calc(laps).cols)+1};
+  drag={src:{r,j},v:laps[r][j],tgt:null,cols:curCols()+1};
   const f=$('fly');f.textContent=f2(drag.v);f.classList.add('on');moveFly(x,y);
   document.body.classList.add('dragging');document.documentElement.classList.add('dragging');$('dropbar').classList.add('on');
   try{navigator.vibrate&&navigator.vibrate(30)}catch(_){}
@@ -708,13 +737,17 @@ $('clear').onclick=()=>{
 };
 let labJ=0;
 function openLab(j){labJ=j;$('lbTitle').textContent=t().labT(j+1);$('lbIn').value=labText(colLab[j])||'';
+  const m=calc(laps,cfg,[]).colAvg[j];$('lbSec').value=colOv[j]!=null?colOv[j]:'';$('lbSec').placeholder=m!=null?f2(m)+' ('+t().autoL+')':'';$('lbErr').textContent='';
   $('lbChips').innerHTML=t().presets.map(q=>'<button type="button" class="'+(labText(colLab[j])===q?'on':'')+'">'+esc(q)+'</button>').join('');
   $('lbmodal').classList.add('on');$('mask2').classList.add('on')}
 function closeLab(){$('lbmodal').classList.remove('on');$('mask2').classList.remove('on');$('lbIn').blur()}
-function setLab(v){while(colLab.length<=labJ)colLab.push('');colLab[labJ]=v;while(colLab.length&&!colLab[colLab.length-1])colLab.pop();put(LKEY,colLab);closeLab();render()}
-$('lbChips').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setLab(b.textContent)});
-$('lbOk').onclick=()=>setLab($('lbIn').value.trim());$('lbClear').onclick=()=>setLab('');$('lbCancel').onclick=closeLab;
-$('lbIn').addEventListener('keydown',e=>{if(e.key==='Enter')setLab($('lbIn').value.trim())});
+function setLab(v,sec){
+  if(sec!==undefined){const sv=String(sec).trim();let n=null;if(sv!==''){n=parseFloat(sv);if(!(n>=0)){$('lbErr').textContent=t().bad;return}n=Math.round(n*100)/100}
+    while(colOv.length<=labJ)colOv.push(null);colOv[labJ]=n;while(colOv.length&&colOv[colOv.length-1]==null)colOv.pop();put(OVKEY,colOv)}
+  while(colLab.length<=labJ)colLab.push('');colLab[labJ]=v;while(colLab.length&&!colLab[colLab.length-1])colLab.pop();put(LKEY,colLab);closeLab();render();ui()}
+$('lbChips').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;$('lbIn').value=b.textContent;[...$('lbChips').children].forEach(x=>x.classList.toggle('on',x===b))});
+$('lbOk').onclick=()=>setLab($('lbIn').value.trim(),$('lbSec').value);$('lbClear').onclick=()=>setLab('',  '');$('lbCancel').onclick=closeLab;
+$('lbIn').addEventListener('keydown',e=>{if(e.key==='Enter')$('lbSec').focus()});$('lbSec').addEventListener('keydown',e=>{if(e.key==='Enter')$('lbOk').click()});
 let saveMode='m1';const LASTK='simple_lap_last_v1',OKEY='simple_lap_opts_v1';
 let opts=load(OKEY,null);
 if(!opts){opts={proc:[],opr:[]};recs.forEach(r=>{if(r.proc&&!opts.proc.includes(r.proc))opts.proc.push(r.proc);if(r.opr&&!opts.opr.includes(r.opr))opts.opr.push(r.opr)});put(OKEY,opts)}
@@ -747,7 +780,7 @@ function openSave(){
     const st=m2stats();$('msum').textContent=t().sum2(M2.count,mmss(st.el),f2(st.spp),f2(st.gross));
   }else{
   if(!laps.length){flash(t().needLoop);return}
-  const {avg,hr}=calc(laps);
+  const {avg,hr}=calc(laps,cfg,colOv);
   $('msum').textContent=t().cnt(laps.length)+' · '+f2(avg)+' '+t().sec+' · '+(hr?hr.toFixed(1):'—')+' '+t().pcs+t().perHr;
   }
   const last=load(LASTK,{});$('fFac').value=last.fac||'GLD6';fillLines(last.grp);$('fProc').value=last.proc||'';$('name').value='';
@@ -766,7 +799,7 @@ function doSave(){
     recs.unshift({...who,type:'count',date:p(d.getDate())+'/'+p(d.getMonth()+1)+' '+p(d.getHours())+':'+p(d.getMinutes()),m2:R,cfg:Object.assign({},cfg)});
     put(RKEY,recs);M2=m2blank();save2();$('name').value='';closeSave();render2();renderRecs();flash2(t().saved);return;
   }
-  recs.unshift({...who,date:p(d.getDate())+'/'+p(d.getMonth()+1)+' '+p(d.getHours())+':'+p(d.getMinutes()),laps:laps.map(r=>r.slice()),cols:colLab.slice(),cfg:Object.assign({},cfg),target:target||0});
+  recs.unshift({...who,date:p(d.getDate())+'/'+p(d.getMonth()+1)+' '+p(d.getHours())+':'+p(d.getMinutes()),laps:laps.map(r=>r.slice()),cols:colLab.slice(),ov:colOv.slice(),cfg:Object.assign({},cfg),target:target||0});
   put(RKEY,recs);
   laps=[];put(KEY,laps);stop();$('name').value='';closeSave();render();renderRecs();flash(t().saved);
 }
