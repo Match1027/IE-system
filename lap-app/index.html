@@ -175,6 +175,11 @@ body.dragging .gscroll{overflow:hidden;touch-action:none}
 .addc.wide{width:auto;padding:0 14px;margin-left:8px;font-size:15px}
 .acell.ov span{color:var(--warn)}
 .acell.ov small::before{content:"✎ "}
+.kbtn{display:block;width:100%;text-align:left;border:0;background:none;padding:3px 0;font:inherit;color:inherit;cursor:pointer;border-radius:8px}
+.kbtn:active{background:var(--soft)}
+.mtag{display:inline!important;margin-left:6px;font-size:12px!important;color:var(--muted)}
+.kbtn.man b{color:var(--warn)}
+.kbtn.man .mtag{color:var(--warn)}
 </style>
 </head>
 <body>
@@ -193,7 +198,7 @@ body.dragging .gscroll{overflow:hidden;touch-action:none}
 
   <div class="boxes">
     <div class="foot">
-      <div class="k"><span id="lAvg"></span><b class="num" id="avg">—</b></div>
+      <button type="button" class="k kbtn" id="avgRow"><span id="lAvg"></span><b class="num" id="avg">—</b><small class="mtag" id="avgTag"></small></button>
       <div class="k"><span id="lTot"></span><b class="num" id="tot">—</b></div>
       <div class="k hrrow" id="hrRow"><span id="lHr"></span><b class="big num" id="hr">—</b></div>
       <div class="f num" id="formula" hidden></div><div class="f" id="lpHint"></div>
@@ -244,6 +249,14 @@ body.dragging .gscroll{overflow:hidden;touch-action:none}
   <label class="fl"><span id="lbSecL"></span><input type="number" id="lbSec" inputmode="decimal" min="0" step="0.01"></label>
   <div class="err" id="lbErr"></div>
   <div class="mrow3"><button class="btn danger" id="lbClear"></button><button class="btn" id="lbCancel"></button><button class="btn pri" id="lbOk"></button></div>
+</div>
+<div class="modal" id="amodal" role="dialog" aria-modal="true" aria-labelledby="aTitle">
+  <h2 id="aTitle"></h2>
+  <div class="msum num" id="aAuto"></div>
+  <label class="fl"><span id="aInL"></span><input type="number" id="aIn" inputmode="decimal" min="0" step="0.01"></label>
+  <div class="msum num" id="aPrev"></div>
+  <div class="err" id="aErr"></div>
+  <div class="mrow3"><button class="btn danger" id="aClear"></button><button class="btn" id="aCancel"></button><button class="btn pri" id="aOk"></button></div>
 </div>
 <div class="mask" id="mask2"></div>
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
@@ -307,6 +320,7 @@ const put=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const normRows=a=>(a||[]).map(x=>Array.isArray(x)?x:[x]);
 const trimRow=r=>{while(r.length&&r[r.length-1]==null)r.pop();return r};
 let laps=normRows(load(KEY,[])), recs=load(RKEY,[]);
+const MKEY='simple_lap_manavg_v1';let manAvg=load(MKEY,null);
 const LKEY='simple_lap_cols_v1',OVKEY='simple_lap_colov_v1';let colLab=load(LKEY,[]),colOv=load(OVKEY,[]);
 const curCols=()=>Math.max(1,calc(laps,cfg,colOv).cols,colLab.length);
 function labText(v){if(!v)return v;for(const k in L){const i=L[k].presets.indexOf(v);if(i>=0)return t().presets[i]}return v}
@@ -329,7 +343,7 @@ const L={
   dlL:'Catatan downtime',noDown:'Tidak ada downtime',dTitle:'Downtime — sedang berhenti',dNoteL:'Alasan (bisa ditulis)',dNoteP:'contoh: benang putus',resume:'Lanjut kerja',
   quick:['Benang putus','Ambil barang','Ganti bobbin','Mesin rusak','Tunggu bahan','Ke toilet','Lainnya'],
   needCnt:'Belum ada output untuk disimpan',dur:'Durasi',customM:'menit lain',delDown:'Hapus downtime',
-  sum2:(c,d,sp,g)=>c+' pcs · '+d+' · '+sp+' / '+g+' sec/pcs',m2tag:'Hitung',dzNew:'Baris baru',dzDel:'Hapus',presets:['Merapikan','Menunggu','Mengambil','Menjahit','Potong benang'],labT:n=>'Kolom '+n+' — waktu untuk apa?',labIn:'Atau tulis sendiri',addCol:'Kolom',secL:'Avg. sec (isi langsung, kosong = otomatis)',autoL:'otomatis',clearL:'Kosongkan',colN:n=>'Kolom '+n,totCol:'Total',shSum:'Ringkasan',shDet:'Detail loop',grp:'Pabrik / Line',newOpt:'Baru — akan disimpan',xh:{date:'Tanggal',mode:'Mode',n:'Loop / pcs',avg:'Avg. sec / sec tanpa downtime',gross:'Sec termasuk downtime',hr:'Output/jam',hrg:'Output/jam (termasuk downtime)',tot:'Total sec',dt:'Downtime (sec)',tgt:'Target',mp:'Saran operator',det:'Detail'},proc:'Proses',opr:'Nama operator',xls:'Export Excel',txt:'Salin teks',delAll:'Hapus semua',delAllQ:'Tekan lagi = hapus semua',noData:'Belum ada catatan',xlsDone:'File Excel dibuat',copied:'Tersalin — tempel di Excel',txtT:'Teks untuk Excel',txtNote:'Tekan Salin, lalu tempel (paste) di Excel. Kolom dipisah tab.',close:'Tutup',copy:'Salin',allDel:'Semua catatan dihapus',net2:'Tanpa downtime',gross2:'Termasuk downtime'},
+  sum2:(c,d,sp,g)=>c+' pcs · '+d+' · '+sp+' / '+g+' sec/pcs',m2tag:'Hitung',dzNew:'Baris baru',dzDel:'Hapus',presets:['Merapikan','Menunggu','Mengambil','Menjahit','Potong benang'],labT:n=>'Kolom '+n+' — waktu untuk apa?',labIn:'Atau tulis sendiri',manL:'manual',avgT:'Isi Avg. sec',avgIn:'Avg. sec (kosong = hitung dari loop)',addCol:'Kolom',secL:'Avg. sec (isi langsung, kosong = otomatis)',autoL:'otomatis',clearL:'Kosongkan',colN:n=>'Kolom '+n,totCol:'Total',shSum:'Ringkasan',shDet:'Detail loop',grp:'Pabrik / Line',newOpt:'Baru — akan disimpan',xh:{date:'Tanggal',mode:'Mode',n:'Loop / pcs',avg:'Avg. sec / sec tanpa downtime',gross:'Sec termasuk downtime',hr:'Output/jam',hrg:'Output/jam (termasuk downtime)',tot:'Total sec',dt:'Downtime (sec)',tgt:'Target',mp:'Saran operator',det:'Detail'},proc:'Proses',opr:'Nama operator',xls:'Export Excel',txt:'Salin teks',delAll:'Hapus semua',delAllQ:'Tekan lagi = hapus semua',noData:'Belum ada catatan',xlsDone:'File Excel dibuat',copied:'Tersalin — tempel di Excel',txtT:'Teks untuk Excel',txtNote:'Tekan Salin, lalu tempel (paste) di Excel. Kolom dipisah tab.',close:'Tutup',copy:'Salin',allDel:'Semua catatan dihapus',net2:'Tanpa downtime',gross2:'Termasuk downtime'},
  zh:{ttl:'分段計時',sw:'Bahasa Indonesia',start:'開始',lap:'記一個 Loop',stop:'停止',clear:'全部清除',confirm:'再按一次確認清除',
   idle:'按開始計時',cont:'按開始繼續計時',run:n=>'第 '+n+' 個 Loop 計時中',
   empty:'還沒有 Loop',sec:'秒',pcs:'件',cnt:n=>n+' 個',avg:'平均秒數',tot:'總秒數',avgS:'平均',totS:'總計',hr:'小時產量',
@@ -344,7 +358,7 @@ const L={
   dlL:'停機紀錄',noDown:'沒有停機',dTitle:'停機中',dNoteL:'原因（可自行填寫）',dNoteP:'例：斷線',resume:'繼續工作',
   quick:['斷線','拿東西','換底線','機台故障','等料','上廁所','其他'],
   needCnt:'還沒有產量可以儲存',dur:'時間',customM:'其他分鐘',delDown:'刪除停機',
-  sum2:(c,d,sp,g)=>c+' 件 · '+d+' · 單件 '+sp+'（含停機 '+g+'）秒',m2tag:'計數',dzNew:'新的一列',dzDel:'刪除',presets:['整理','等待','拿取','車縫','剪線'],labT:n=>'第 '+n+' 欄是什麼時間？',labIn:'或自行輸入',addCol:'欄位',secL:'平均秒數（直接輸入，空白＝自動計算）',autoL:'自動',clearL:'清除',colN:n=>'第'+n+'欄',totCol:'合計',shSum:'總表',shDet:'Loop 明細',grp:'廠別 / 組別',newOpt:'新項目，儲存後會記住',xh:{date:'日期',mode:'模式',n:'Loop數 / 件數',avg:'平均秒數 / 扣停機單件秒數',gross:'含停機單件秒數',hr:'小時產量',hrg:'小時產量(含停機)',tot:'總秒數',dt:'停機秒數',tgt:'目標件數',mp:'建議人數',det:'明細'},proc:'工段',opr:'車工名字',xls:'匯出 Excel',txt:'複製文字',delAll:'全部刪除',delAllQ:'再按一次全部刪除',noData:'沒有紀錄',xlsDone:'Excel 檔已產生',copied:'已複製，可直接貼到 Excel',txtT:'貼到 Excel 的文字',txtNote:'按「複製」後到 Excel 貼上，欄位用 Tab 分隔。',close:'關閉',copy:'複製',allDel:'已全部刪除',net2:'扣停機',gross2:'含停機'}};
+  sum2:(c,d,sp,g)=>c+' 件 · '+d+' · 單件 '+sp+'（含停機 '+g+'）秒',m2tag:'計數',dzNew:'新的一列',dzDel:'刪除',presets:['整理','等待','拿取','車縫','剪線'],labT:n=>'第 '+n+' 欄是什麼時間？',labIn:'或自行輸入',manL:'手動',avgT:'輸入平均秒數',avgIn:'平均秒數（空白＝用 Loop 計算）',addCol:'欄位',secL:'平均秒數（直接輸入，空白＝自動計算）',autoL:'自動',clearL:'清除',colN:n=>'第'+n+'欄',totCol:'合計',shSum:'總表',shDet:'Loop 明細',grp:'廠別 / 組別',newOpt:'新項目，儲存後會記住',xh:{date:'日期',mode:'模式',n:'Loop數 / 件數',avg:'平均秒數 / 扣停機單件秒數',gross:'含停機單件秒數',hr:'小時產量',hrg:'小時產量(含停機)',tot:'總秒數',dt:'停機秒數',tgt:'目標件數',mp:'建議人數',det:'明細'},proc:'工段',opr:'車工名字',xls:'匯出 Excel',txt:'複製文字',delAll:'全部刪除',delAllQ:'再按一次全部刪除',noData:'沒有紀錄',xlsDone:'Excel 檔已產生',copied:'已複製，可直接貼到 Excel',txtT:'貼到 Excel 的文字',txtNote:'按「複製」後到 Excel 貼上，欄位用 Tab 分隔。',close:'關閉',copy:'複製',allDel:'已全部刪除',net2:'扣停機',gross2:'含停機'}};
 let lang='id';
 const t=()=>L[lang];
 const f2=x=>x.toFixed(2);
@@ -406,13 +420,12 @@ function gridHTML(rows,cols,dg){
 function render(){
   const C=calc(laps,cfg,colOv);
   $('list').innerHTML=laps.length||colOv.some(v=>v!=null)||colLab.length?gridHTML(laps,curCols(),null):'<div class="empty">'+t().empty+' <button type="button" class="addc wide" data-ac="0">＋ '+t().addCol+'</button></div>';
-  if(laps.length){
-    const {avg,hr,tot}=C;
-    $('tot').textContent=f2(tot)+' '+t().sec;renderMp(hr);
-    $('avg').textContent=f2(avg)+' '+t().sec;
-    $('hr').textContent=hr?hr.toFixed(1)+' '+t().pcs:'—';
-    $('formula').textContent=fxText(f2(avg))+' = '+(hr?hr.toFixed(1):'—');
-  }else{$('avg').textContent='—';$('tot').textContent='—';renderMp(0);$('hr').textContent='—';$('formula').textContent=fxText(t().fx);}
+  $('avgRow').classList.toggle('man',manAvg!=null);$('avgTag').textContent=manAvg!=null?'✎ '+t().manL:'✎';
+  $('tot').textContent=laps.length?f2(C.tot)+' '+t().sec:'—';
+  const avg=manAvg!=null?manAvg:(laps.length||colOv.some(v=>v!=null)?C.avg:0),hr=avg>0?cfg.base/(avg*cfg.k):0;
+  $('avg').textContent=avg?f2(avg)+' '+t().sec:'—';renderMp(hr);
+  $('hr').textContent=hr?hr.toFixed(1)+' '+t().pcs:'—';
+  $('formula').textContent=avg?fxText(f2(avg))+' = '+(hr?hr.toFixed(1):'—'):fxText(t().fx);
 }
 function recTitle(r){
   if(r.grp||r.proc||r.opr) return '<div class="nm">'+esc(r.opr||t().unnamed)+' <span class="who">'+esc([r.grp,r.proc].filter(Boolean).join(' · '))+'</span>';
@@ -637,6 +650,7 @@ function applyLang(){
   $('name').placeholder='';$('lGrp').textContent=t().grp;$('lProc').textContent=t().proc;$('lOpr').textContent=t().opr;
   $('lXls').textContent=t().xls;$('lTxt').textContent=t().txt;$('lDelAll').textContent=t().delAll;$('xTitle').textContent=t().txtT;$('xNote').textContent=t().txtNote;$('xClose').textContent=t().close;$('xCopy').textContent=t().copy;
   $('save').setAttribute('aria-label',t().save);$('mTitle').textContent=t().saveT;$('mCancel').textContent=t().cancel;$('mOk').textContent=t().save;$('lRec').textContent=t().rec;
+  $('aTitle').textContent=t().avgT;$('aInL').textContent=t().avgIn;$('aClear').textContent=t().clearL;$('aCancel').textContent=t().cancel;$('aOk').textContent=t().save;
   $('lbInL').textContent=t().labIn;$('lbSecL').textContent=t().secL;$('lbClear').textContent=t().clearL;$('lbCancel').textContent=t().cancel;$('lbOk').textContent=t().save;
   $('dzNew').textContent=t().dzNew;$('dzDel').textContent=t().dzDel;
   $('tab1').textContent=t().tab1;$('tab2').textContent=t().tab2;$('downBtn').textContent=t().down;
@@ -735,6 +749,13 @@ $('clear').onclick=()=>{
   if(!armed){armed=true;$('clear').textContent=t().confirm;setTimeout(()=>{armed=false;$('clear').textContent=t().clear},2500);return}
   armed=false;laps=[];put(KEY,laps);stop();render();$('clear').textContent=t().clear;
 };
+function aPrev(){const v=parseFloat($('aIn').value);$('aPrev').textContent=v>0?t().hr+': '+(cfg.base/(v*cfg.k)).toFixed(1)+' '+t().pcs+(target?' · '+t().mpL+': '+Math.ceil(target/(cfg.base/(v*cfg.k))-1e-9)+' '+t().orang:''):''}
+function openAvg(){const C=calc(laps,cfg,colOv);$('aAuto').textContent=t().autoL+': '+(laps.length?f2(C.avg)+' '+t().sec:'—');
+  $('aIn').value=manAvg!=null?manAvg:'';$('aErr').textContent='';aPrev();$('amodal').classList.add('on');$('mask2').classList.add('on');setTimeout(()=>{$('aIn').focus();$('aIn').select()},50)}
+function closeAvg(){$('amodal').classList.remove('on');$('mask2').classList.remove('on');$('aIn').blur()}
+function setAvg(v){if(v===''){manAvg=null}else{const n=parseFloat(v);if(!(n>0)){$('aErr').textContent=t().bad;return}manAvg=Math.round(n*100)/100}put(MKEY,manAvg);closeAvg();render()}
+$('avgRow').onclick=openAvg;$('aIn').addEventListener('input',aPrev);$('aIn').addEventListener('keydown',e=>{if(e.key==='Enter')setAvg($('aIn').value.trim())});
+$('aOk').onclick=()=>setAvg($('aIn').value.trim());$('aClear').onclick=()=>setAvg('');$('aCancel').onclick=closeAvg;
 let labJ=0;
 function openLab(j){labJ=j;$('lbTitle').textContent=t().labT(j+1);$('lbIn').value=labText(colLab[j])||'';
   const m=calc(laps,cfg,[]).colAvg[j];$('lbSec').value=colOv[j]!=null?colOv[j]:'';$('lbSec').placeholder=m!=null?f2(m)+' ('+t().autoL+')':'';$('lbErr').textContent='';
@@ -803,7 +824,7 @@ function doSave(){
   put(RKEY,recs);
   laps=[];put(KEY,laps);stop();$('name').value='';closeSave();render();renderRecs();flash(t().saved);
 }
-$('save').onclick=openSave;$('save2').onclick=openSave;$('mCancel').onclick=closeSave;$('mask2').onclick=()=>{closeSave();closeCfg();closeTgt();closeLab()};$('mOk').onclick=doSave;
+$('save').onclick=openSave;$('save2').onclick=openSave;$('mCancel').onclick=closeSave;$('mask2').onclick=()=>{closeSave();closeCfg();closeTgt();closeLab();closeAvg()};$('mOk').onclick=doSave;
 
 function cPreview(){const b=parseFloat($('cBase').value),k=parseFloat($('cK').value);$('cPrev').textContent=(isFinite(b)?b:'?')+' ÷ ('+t().fx+' × '+(isFinite(k)?k:'?')+')'}
 function openCfg(){$('cBase').value=cfg.base;$('cK').value=cfg.k;$('cErr').textContent='';cPreview();$('cmodal').classList.add('on');$('mask2').classList.add('on')}
@@ -831,7 +852,7 @@ $('recs').onclick=e=>{
   if(armedRec!==i){renderRecs();armedRec=i;const nb=$('recs').querySelector('[data-r="'+i+'"]');nb.textContent=t().delRecQ;nb.style.width='auto';nb.style.padding='0 10px';nb.style.fontSize='14px';nb.style.fontWeight='700';clearTimeout(armTimer);armTimer=setTimeout(()=>{armedRec=-1;renderRecs()},2500);return}
   armedRec=-1;recs.splice(i,1);put(RKEY,recs);renderRecs();
 };
-const d0=()=>['modal','cmodal','tmodal','xmodal','lbmodal'].some(id=>$(id).classList.contains('on'));
+const d0=()=>['modal','cmodal','tmodal','xmodal','lbmodal','amodal'].some(id=>$(id).classList.contains('on'));
 function openH(){$('drawer').classList.add('on');$('mask').classList.add('on');$('drawer').setAttribute('aria-hidden','false');$('closeH').focus()}
 function closeH(){$('drawer').classList.remove('on');$('mask').classList.remove('on');$('drawer').setAttribute('aria-hidden','true')}
 $('openH').onclick=openH;$('closeH').onclick=closeH;$('mask').onclick=closeH;
@@ -844,7 +865,7 @@ document.addEventListener('touchend',e=>{const p=e.changedTouches[0],dx=p.client
   const on=$('drawer').classList.contains('on');
   if(dx>0&&!on)openH(); else if(dx<0&&on)closeH();
 },{passive:true});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeLab();closeX();closeH();closeSave();closeCfg();closeTgt()}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeAvg();closeLab();closeX();closeH();closeSave();closeCfg();closeTgt()}});
 $('lang').onclick=()=>{lang=lang==='id'?'zh':'id';applyLang()};
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/BUTTON|INPUT/.test(e.target.tagName)&&!$('drawer').classList.contains('on')&&!d0()){e.preventDefault();if(mode==='m2'){if(!$('dscreen').classList.contains('on'))$('plus').click()}else lap()}});
 applyLang();setMode(mode);
