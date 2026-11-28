@@ -171,6 +171,9 @@ body.dragging .gscroll{overflow:hidden;touch-action:none}
 .colbtns.on{display:grid}
 .colbtns .cb{min-height:56px;padding:0 4px;font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .colbtns .cb.nx{border-color:var(--primary);color:var(--primary);border-width:2px}
+.colbtns .cb{font-size:20px}
+.colbtns .cb.filled{background:var(--soft);color:var(--muted)}
+.colbtns .cb.filled.nx{color:var(--primary)}
 .addc{width:40px;height:40px;border-radius:10px;border:1px dashed var(--primary);background:none;color:var(--primary);font-size:20px;font-weight:700}
 .addc.wide{width:auto;padding:0 14px;margin-left:8px;font-size:15px}
 .acell.ov span{color:var(--warn)}
@@ -382,7 +385,7 @@ function lap(col){
       if(cols>1&&last){let k=last.findIndex((x,i)=>x==null&&i<cols);if(k<0&&last.length<cols)k=last.length;if(k>=0&&k<cols){while(last.length<k)last.push(null);last[k]=v}else laps.push([v])}
       else laps.push([v]);
     }else{
-      if(last&&last[col]==null&&last.length<=cols&&!(last.slice(col+1).some(x=>x!=null))){while(last.length<col)last.push(null);last[col]=v}
+      if(last&&last[col]==null){while(last.length<col)last.push(null);last[col]=v}
       else{const r=[];while(r.length<col)r.push(null);r.push(v);laps.push(r)}
     }
     put(KEY,laps);render();
@@ -396,7 +399,7 @@ function ui(){
   const nc=curCols();$('colBtns').classList.toggle('on',running&&nc>1);
   if(running&&nc>1){const last=laps[laps.length-1];let nx=0;if(last){nx=last.findIndex((x,i)=>x==null&&i<nc);if(nx<0)nx=last.length<nc?last.length:0}
     $('colBtns').style.gridTemplateColumns='repeat('+nc+',minmax(0,1fr))';
-    $('colBtns').innerHTML=Array.from({length:nc},(_,j)=>'<button type="button" class="btn cb'+(j===nx?' nx':'')+'" data-col="'+j+'">'+esc(colName(colLab,j))+'</button>').join('')}
+    $('colBtns').innerHTML=Array.from({length:nc},(_,j)=>{const f=!!(last&&last[j]!=null);return '<button type="button" class="btn cb'+(j===nx?' nx':'')+(f?' filled':'')+'" data-col="'+j+'" aria-label="'+esc(colName(colLab,j))+'">'+(j+1)+'</button>'}).join('')}
   $('stop').disabled=!running;
   $('sub').textContent=running?t().run(laps.length+1):(laps.length?t().cont:t().idle);
 }
